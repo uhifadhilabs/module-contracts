@@ -1,0 +1,48 @@
+{
+    "name": "uhifadhilabs/module-contracts",
+    "description": "The contract a uhifadhi module declares itself with — catalogue metadata plus an optional own entry route. Implemented by built-in modules and by installable module bundles alike.",
+    "type": "library",
+    "keywords": ["uhifadhi", "module", "contract", "symfony"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ezekiel Mjema",
+            "homepage": "https://github.com/eemjema"
+        }
+    ],
+    "require": {
+        "php": ">=8.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "UhifadhiLabs\\ModuleContracts\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "UhifadhiLabs\\ModuleContracts\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^13.2"
+    },
+    "scripts": {
+        "cs:fix": "php-cs-fixer fix",
+        "cs:check": "php-cs-fixer fix --dry-run --diff",
+        "phpstan": "phpstan analyse --no-progress --memory-limit=1G",
+        "test": "phpunit",
+        "check": ["@cs:check", "@phpstan", "@test"]
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.1-dev"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
