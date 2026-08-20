@@ -43,4 +43,10 @@ trait ModuleProviderTrait
     {
         return null;
     }
+
+    /** @return list<ModulePermission> */
+    public function permissions(): array
+    {
+        return [];
+    }
 }

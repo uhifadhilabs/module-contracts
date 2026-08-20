@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace UhifadhiLabs\ModuleContracts\Tests;
 
 use PHPUnit\Framework\TestCase;
+use UhifadhiLabs\ModuleContracts\ModulePermission;
 use UhifadhiLabs\ModuleContracts\ModuleProviderInterface;
 use UhifadhiLabs\ModuleContracts\ModuleProviderTrait;
 
@@ -50,6 +51,40 @@ final class ModuleProviderTraitTest extends TestCase
         self::assertSame(0, $provider->position());
         self::assertNull($provider->icon());
         self::assertNull($provider->entryRoute(), 'A generically-rendered module has no own entry route.');
+        self::assertSame([], $provider->permissions(), 'Most modules gate nothing beyond what the host already does.');
+    }
+
+    public function testAModuleDeclaresItsPermissionsWithoutGrantingThem(): void
+    {
+        $provider = new class implements ModuleProviderInterface {
+            use ModuleProviderTrait;
+
+            public function slug(): string
+            {
+                return 'example';
+            }
+
+            public function name(): string
+            {
+                return 'Example';
+            }
+
+            public function category(): string
+            {
+                return 'pressure';
+            }
+
+            public function permissions(): array
+            {
+                return [new ModulePermission('example.review', 'Example', 'Review')];
+            }
+        };
+
+        $permissions = $provider->permissions();
+        self::assertCount(1, $permissions);
+        self::assertSame('example.review', $permissions[0]->value);
+        self::assertSame('Example', $permissions[0]->umbrella);
+        self::assertSame('Review', $permissions[0]->action);
     }
 
     public function testOverridesWinOverDefaults(): void
