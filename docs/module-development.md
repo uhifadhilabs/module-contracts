@@ -30,10 +30,10 @@ layer, and the namespace names the domain and argues with nobody.
 
 | Layer | Rule | Sightings |
 |---|---|---|
-| Repo + composer name (uhifadhi-exclusive) | `<vendor>/<name>-module` | `acme/sightings-module` |
-| Repo + composer name (generic Symfony package) | `<vendor>/<name>-bundle` | — |
-| PHP namespace | the DOMAIN, no meta-word | `Acme\Sightings\Entity\Sighting` |
-| Bundle class (the one Symfony plug) | `<Vendor><Name>Bundle` | `Acme\Sightings\AcmeSightingsBundle` |
+| Composer name (uhifadhi-exclusive) | `<vendor>/<name>-module` | `your-vendor/sightings-module` |
+| Composer name (generic Symfony package) | `<vendor>/<name>-bundle` | — |
+| PHP namespace | the DOMAIN, no meta-word | `YourVendor\Sightings\Entity\Sighting` |
+| Bundle class (the one Symfony plug) | `<Vendor><Name>Bundle` | `YourVendor\Sightings\YourVendorSightingsBundle` |
 | Config alias (`extensionAlias`) | the bare domain word | `sightings:` |
 | Service ids | prefixed with the alias | `sightings.observation_repository` |
 | DB tables | prefixed with the domain word | `sightings_observation` |
@@ -46,17 +46,23 @@ Three consequences worth stating:
 - **The package name is never parsed.** Symfony Flex registers a bundle because the package
   declares `"type": "symfony-bundle"`, and it registers the bundle *class*. So a `-module`
   package registers exactly like a `-bundle` one.
-- **`extensionAlias` must be set explicitly.** Without it, `AcmeSightingsBundle` derives the
-  alias `acme_sightings`, and your users write `acme_sightings:` in YAML forever. Set
+- **`extensionAlias` must be set explicitly.** Without it, `YourVendorSightingsBundle` derives the
+  alias `your_vendor_sightings`, and your users write `your_vendor_sightings:` in YAML forever. Set
   `protected string $extensionAlias = 'sightings';`.
 
 Platform machinery follows the same rule even when it contributes no catalogue tile of its own.
 
+**About `your-vendor`.** Everything else in this guide is the real uhifadhi world — the host is
+uhifadhi, the seam tags are the tags, the host classes you bind to are the classes. The one
+placeholder is the example module's *own* identity: replace `your-vendor` with whatever vendor
+you publish under, in the package name, the PHP namespace and the bundle class alike. It is left
+blank on purpose, because official modules ship as `uhifadhi/*` and a guide that told you to
+publish there would be teaching you to squat a namespace that is not yours.
+
 The first-party modules use the composer vendor `uhifadhi/` (`uhifadhi/patrol-module`,
 `uhifadhi/module-contracts`, …); the repositories they are published from live under
 `github.com/uhifadhilabs`. A composer vendor and a GitHub organisation are separate
-namespaces and need not match — third-party modules pick their own vendor, as `acme/` does
-above.
+namespaces and need not match — yours need match neither.
 
 ---
 
@@ -79,7 +85,7 @@ sightings-module/
 ├── config/services.php     # static wiring
 ├── public/                 # stylesheets, vendor scripts, images
 ├── src/
-│   ├── AcmeSightingsBundle.php
+│   ├── YourVendorSightingsBundle.php
 │   ├── DependencyInjection/SightingsConfiguration.php
 │   ├── Entity/ Repository/ Service/ Controller/
 │   └── Module/SightingsModuleProvider.php
@@ -91,7 +97,7 @@ sightings-module/
 
 ```json
 {
-    "name": "acme/sightings-module",
+    "name": "your-vendor/sightings-module",
     "type": "symfony-bundle",
     "require": {
         "php": ">=8.4",
@@ -101,8 +107,8 @@ sightings-module/
         "symfony/http-kernel": "^7.3 || ^8.0",
         "uhifadhi/module-contracts": "^0.1"
     },
-    "autoload": { "psr-4": { "Acme\\Sightings\\": "src/" } },
-    "autoload-dev": { "psr-4": { "Acme\\Sightings\\Tests\\": "tests/" } },
+    "autoload": { "psr-4": { "YourVendor\\Sightings\\": "src/" } },
+    "autoload-dev": { "psr-4": { "YourVendor\\Sightings\\Tests\\": "tests/" } },
     "scripts": {
         "cs:check": "php-cs-fixer fix --dry-run --diff",
         "phpstan": "phpstan analyse --no-progress --memory-limit=1G",
@@ -125,7 +131,7 @@ Extend `AbstractBundle` — it collapses the old Extension + Configuration + Bun
 one file.
 
 ```php
-final class AcmeSightingsBundle extends AbstractBundle
+final class YourVendorSightingsBundle extends AbstractBundle
 {
     protected string $extensionAlias = 'sightings';
 
@@ -153,10 +159,10 @@ writes a `doctrine.orm.mappings` block for your tables:
 ```php
 if ($builder->hasExtension('doctrine')) {
     $container->extension('doctrine', ['orm' => ['mappings' => [
-        'AcmeSightings' => [
+        'YourVendorSightings' => [
             'type' => 'attribute',
             'dir' => __DIR__.'/Entity',
-            'prefix' => 'Acme\\Sightings\\Entity',
+            'prefix' => 'YourVendor\\Sightings\\Entity',
             'is_bundle' => false,
         ],
     ]]]);
@@ -337,8 +343,8 @@ application and into a bundle without a single importer changing.
 
 | Directory | Registered | Logical path | Use for |
 |---|---|---|---|
-| `public/` | automatically | `bundles/acmesightings/…` | stylesheets, images, **classic `<script>` files** |
-| `assets/` | you prepend it | `@acme/sightings-module/…` | anything imported as an ES module |
+| `public/` | automatically | `bundles/yourvendorsightings/…` | stylesheets, images, **classic `<script>` files** |
+| `assets/` | you prepend it | `@your-vendor/sightings-module/…` | anything imported as an ES module |
 
 `public/` needs no configuration at all: AssetMapper registers every bundle's `public/` directory
 under `bundles/<lowercased bundle class name minus "Bundle">` and content-versions what is in it.
@@ -350,7 +356,7 @@ vendor stylesheet's own images come along for free.
 ```php
 if ($builder->hasExtension('framework') && interface_exists(AssetMapperInterface::class)) {
     $container->extension('framework', ['asset_mapper' => ['paths' => [
-        \dirname(__DIR__).'/assets' => '@acme/sightings-module',
+        \dirname(__DIR__).'/assets' => '@your-vendor/sightings-module',
     ]]]);
 }
 ```
@@ -364,12 +370,12 @@ host may have installed you for your PHP alone.
 There is no extension point. `importmap.php` is read as one file, and nothing a bundle does can
 contribute an entry to it. So the contract splits in two:
 
-- the **directory** is yours — you guarantee `@acme/sightings-module/plate.js` exists and keeps
+- the **directory** is yours — you guarantee `@your-vendor/sightings-module/plate.js` exists and keeps
   working;
 - the **import names** are three lines in the host's `importmap.php`:
 
 ```php
-'sightings/plate' => ['path' => '@acme/sightings-module/plate.js'],
+'sightings/plate' => ['path' => '@your-vendor/sightings-module/plate.js'],
 ```
 
 Document those lines in your README, and ship them in a Flex recipe (chapter 9) so an install
@@ -393,11 +399,11 @@ it in `assets/` gains nothing. Keep it in `public/` and link it from a layout. P
 **class constant** rather than expecting hosts to type it:
 
 ```php
-public const string LEAFLET_JS = 'bundles/acmesightings/leaflet/leaflet.js';
+public const string LEAFLET_JS = 'bundles/yourvendorsightings/leaflet/leaflet.js';
 ```
 
 ```twig
-<script src="{{ asset(constant('Acme\\Sightings\\AcmeSightingsBundle::LEAFLET_JS')) }}"></script>
+<script src="{{ asset(constant('YourVendor\\Sightings\\YourVendorSightingsBundle::LEAFLET_JS')) }}"></script>
 ```
 
 A path written in a host layout *and* two other bundles' base templates is a path that eventually
@@ -434,7 +440,7 @@ it, because a defect of that file must fail where someone would edit it — not 
 ## 5. Templates and Twig namespaces
 
 A bundle's `templates/` directory is registered automatically under a namespace derived from the
-bundle class: `@AcmeSightings/…`. Nothing to configure.
+bundle class: `@YourVendorSightings/…`. Nothing to configure.
 
 Give your bundle its **own base template** that extends the host's layout, rather than having every
 page extend `layout.html.twig` directly:
@@ -445,7 +451,7 @@ page extend `layout.html.twig` directly:
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="{{ asset(constant('Acme\\Sightings\\AcmeSightingsBundle::STYLESHEET')) }}">
+    <link rel="stylesheet" href="{{ asset(constant('YourVendor\\Sightings\\YourVendorSightingsBundle::STYLESHEET')) }}">
 {% endblock %}
 ```
 
@@ -521,7 +527,7 @@ final class TestKernel extends Kernel
     {
         yield new FrameworkBundle();
         yield new DoctrineBundle();
-        yield new AcmeSightingsBundle();
+        yield new YourVendorSightingsBundle();
     }
 
     protected function configureContainer(ContainerConfigurator $container): void
@@ -566,7 +572,7 @@ widget framework). Do **not** require the host. Put minimal stand-ins under
 ```json
 "autoload-dev": {
     "psr-4": {
-        "Acme\\Sightings\\Tests\\": "tests/",
+        "YourVendor\\Sightings\\Tests\\": "tests/",
         "Uhifadhi\\Model\\": "tests/Fixtures/Uhifadhi/Model/"
     }
 }
@@ -631,7 +637,7 @@ Installing a module should not be a checklist. A Flex recipe turns it into `comp
 
 ```json
 {
-    "bundles": { "Acme\\Sightings\\AcmeSightingsBundle": ["all"] },
+    "bundles": { "YourVendor\\Sightings\\YourVendorSightingsBundle": ["all"] },
     "copy-from-recipe": { "config/": "%CONFIG_DIR%/" },
     "env": { "SIGHTINGS_API_KEY": "" }
 }
