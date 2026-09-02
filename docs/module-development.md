@@ -304,10 +304,25 @@ Say `true` only when a host without you would not have *fewer features* but *bro
 map platform is the first module in the platform to qualify, because patrol plates, incident
 plates, the area overview and the zones editor all import its assets.
 
-**Be clear about what core does not mean.** It does not lock the module on: the host's Customize
-page can still switch a core module off for an area, and doing so unloads nothing and takes no
-assets away. It is a default, and only a default. That is the honest state of the seam today;
-enforcement, if it is ever wanted, is a later ruling.
+**The not-uhifadhi test.** A core module is one whose absence makes the installation *not
+uhifadhi*. If a deployment without your module is still recognisably the product — poorer, but
+the product — then it is a branch, not core. Almost everything is a branch. The current core set
+is `map`, `team`, `widget` and `area` (the trunk and the canopy are the tree itself, a tier above
+modules and not subject to this question at all).
+
+The word then means two different things at two levels, and they are worth keeping apart:
+
+- **Deployment level.** Core modules are in the project template's requires, so they are present
+  in every installation by definition. Nobody edits them out; wanting to remove one is not a
+  configuration need, it is evidence the module was misclassified.
+- **Area level.** Whether a core module can be hidden for a *particular* area is a separate and
+  much smaller question. `core()` seeds it active rather than parked, and beyond that the seam
+  does not currently enforce anything — the Customize page will still switch it off, and doing so
+  unloads nothing and takes no assets away. Whether it *should* be allowed to is an open host
+  ruling, not a settled rule this guide can hand you.
+
+So `core()` is a default about seeding, and the not-uhifadhi test is the question you answer
+before setting it.
 
 ### Permissions
 
