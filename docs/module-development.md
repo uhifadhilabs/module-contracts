@@ -14,6 +14,12 @@ works some particular way.
 - [1. Naming](#1-naming)
 - [2. The scaffold](#2-the-scaffold)
 - [3. The module seam](#3-the-module-seam)
+- [4. Shipping importmap assets from a bundle](#4-shipping-importmap-assets-from-a-bundle)
+- [5. Templates and Twig namespaces](#5-templates-and-twig-namespaces)
+- [6. Contributing to the overview](#6-contributing-to-the-overview)
+- [7. Testing](#7-testing)
+- [8. CI](#8-ci)
+- [9. Flex recipe and activation](#9-flex-recipe-and-activation)
 
 ---
 
@@ -314,3 +320,341 @@ it.
 Returning a route name means you own your pages, and the host links to it with the area's uuid:
 `path(entryRoute(), {uuid: area.uuid})`. Your route therefore has to accept a `uuid` parameter and
 resolve the area itself.
+---
+
+## 4. Shipping importmap assets from a bundle
+
+This is the hard chapter. Everything in it comes from moving three shared scripts out of the host
+application and into a bundle without a single importer changing.
+
+### The two directories, and what each is for
+
+| Directory | Registered | Logical path | Use for |
+|---|---|---|---|
+| `public/` | automatically | `bundles/acmesightings/…` | stylesheets, images, **classic `<script>` files** |
+| `assets/` | you prepend it | `@acme/sightings-module/…` | anything imported as an ES module |
+
+`public/` needs no configuration at all: AssetMapper registers every bundle's `public/` directory
+under `bundles/<lowercased bundle class name minus "Bundle">` and content-versions what is in it.
+No `assets:install`, no symlink. Relative `url()`s inside a CSS file there are rewritten, so a
+vendor stylesheet's own images come along for free.
+
+`assets/` is yours to declare, in `prependExtension()`, the way `symfony/ux-turbo` does:
+
+```php
+if ($builder->hasExtension('framework') && interface_exists(AssetMapperInterface::class)) {
+    $container->extension('framework', ['asset_mapper' => ['paths' => [
+        \dirname(__DIR__).'/assets' => '@acme/sightings-module',
+    ]]]);
+}
+```
+
+Guard it on **both** conditions. `hasExtension('framework')` because you may be in a kernel that
+has none; `interface_exists(AssetMapperInterface::class)` because AssetMapper is optional and a
+host may have installed you for your PHP alone.
+
+### The gotcha: a bundle cannot add importmap entries
+
+There is no extension point. `importmap.php` is read as one file, and nothing a bundle does can
+contribute an entry to it. So the contract splits in two:
+
+- the **directory** is yours — you guarantee `@acme/sightings-module/plate.js` exists and keeps
+  working;
+- the **import names** are three lines in the host's `importmap.php`:
+
+```php
+'sightings/plate' => ['path' => '@acme/sightings-module/plate.js'],
+```
+
+Document those lines in your README, and ship them in a Flex recipe (chapter 9) so an install
+writes them. The recipe hides the seam; it does not remove it.
+
+### Name your exports as bare specifiers, not paths
+
+This is the single most valuable habit in the chapter. When the platform's map scripts lived in the
+host application they were still imported as `uhifadhi/basemaps`, never as `./assets/…`. The day
+they moved into a bundle, **every importer in three repositories kept working unchanged** — only
+the right-hand side of the importmap entry moved. Had they been imported by path, the extraction
+would have touched every map controller in the product.
+
+Write a test for it. A one-line sweep over your controllers asserting that none of them contains
+your own namespace string is enough to keep the property true.
+
+### Classic scripts stay in `public/`
+
+If a library publishes a global (`window.L` and friends) it is not an importmap module, and putting
+it in `assets/` gains nothing. Keep it in `public/` and link it from a layout. Publish the path as a
+**class constant** rather than expecting hosts to type it:
+
+```php
+public const string LEAFLET_JS = 'bundles/acmesightings/leaflet/leaflet.js';
+```
+
+```twig
+<script src="{{ asset(constant('Acme\\Sightings\\AcmeSightingsBundle::LEAFLET_JS')) }}"></script>
+```
+
+A path written in a host layout *and* two other bundles' base templates is a path that eventually
+differs by one character in one of them.
+
+### Publishing configuration to the browser
+
+Where a script needs a value the server knows — which tile provider, which feature flags — put it
+on the `<body>` as one JSON data attribute rendered by a Twig function your bundle registers, and
+have the script read it with a sane default when the attribute is absent:
+
+```php
+new TwigFunction('sightings_attributes', $this->attributes(...), ['is_safe' => ['html']]);
+```
+
+Two things this earns you: the value is available before the first render rather than after a
+round trip, and one document has exactly one place to read it from, so two components cannot
+disagree. Two things to get right: `json_encode()` does **not** escape `"` by default, so escape
+the payload yourself with `htmlspecialchars(..., ENT_QUOTES)` before marking it `is_safe` — and
+emit **only** the keys the current configuration actually needs, so a secret is never printed on a
+page that was not going to use it.
+
+### Asset-idiom tests
+
+Some defects live in JavaScript that no PHP test can execute — a cache that only remembers success,
+a script that reaches for a vendor endpoint directly. If you have no JS runner, read the shipped
+asset as **text** and assert on it. It is cruder than a unit test and it catches the real thing.
+
+Keep those tests **with the asset**. When a script moves to another repository its test moves with
+it, because a defect of that file must fail where someone would edit it — not two repositories away.
+
+---
+
+## 5. Templates and Twig namespaces
+
+A bundle's `templates/` directory is registered automatically under a namespace derived from the
+bundle class: `@AcmeSightings/…`. Nothing to configure.
+
+Give your bundle its **own base template** that extends the host's layout, rather than having every
+page extend `layout.html.twig` directly:
+
+```twig
+{# templates/base.html.twig #}
+{% extends 'layout.html.twig' %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset(constant('Acme\\Sightings\\AcmeSightingsBundle::STYLESHEET')) }}">
+{% endblock %}
+```
+
+That way your stylesheet loads only where your module renders, and the host's stylesheet never
+mentions you.
+
+A rule the platform learned the hard way, worth inheriting: **the host's stylesheet is loaded on
+your pages too.** A bare one-word class in either sheet (`.who`, `.day`, `.feed`) will eventually
+collide across the repository boundary and the cascade decides who wins by load order. Qualify your
+selectors with an element or a prefix, and never write a second copy of a vocabulary the host
+already defines — two copies loaded in either order render differently, which is exactly what the
+"same layer renders identically everywhere" rule forbids.
+
+If your module contributes markup to a host-rendered surface, expose the stylesheet path through
+`ContributesStylesheetInterface::stylesheet()` so the host can link the same sheet from a page you
+do not render.
+
+---
+
+## 6. Contributing to the overview
+
+An area's overview is composed from every installed module. Each contribution is a small interface
+plus an explicit tag; you can implement any subset, and a module that implements none is perfectly
+valid.
+
+| Interface | Tag | Contributes |
+|---|---|---|
+| `OverviewContributorInterface` | `uhifadhi.overview.widget_provider` | widgets and their render context |
+| `NowTileProviderInterface` | `uhifadhi.overview.now_tile` | "right now" tiles in the strip |
+| `AttentionProviderInterface` | `uhifadhi.overview.attention` | items in the attention list |
+| `MapLayerProviderInterface` | `uhifadhi.map.layer` | layers on the area map |
+| `PulseProviderInterface` | `uhifadhi.overview.pulse` | events in the activity feed |
+| `OverviewCopyProviderInterface` | `uhifadhi.overview.copy` | copy fragments for a named slot |
+| `DepartmentKpiProviderInterface` | `uhifadhi.department_kpi` | a department's KPI figures |
+
+Every one of them starts with `moduleSlug()`, and it must return the same slug your
+`ModuleProviderInterface` does: that is how a contribution disappears when an area switches your
+module off.
+
+Three rules that keep this seam honest:
+
+- **Tag explicitly, at both ends.** The tag names are published as `TAG` constants on the
+  interfaces; use them. Your services are not autoconfigured, so nothing applies these for you.
+- **Per-module behaviour lives in the module.** Adding a module means adding tagged provider
+  classes — never editing the host's generic controller or services to special-case you. If you
+  find yourself wanting to, the seam is missing something; say so rather than reaching across.
+- **Ship a legend with a layer.** Every map layer a module contributes carries its own legend, and
+  the same layer must render identically wherever it is drawn. A layer with a private palette is a
+  layer that will read differently on two screens.
+
+---
+
+## 7. Testing
+
+Tests first — the platform's modules are built that way and the seams assume it.
+
+The pyramid, in the order a failure should reach you:
+
+- **Unit.** The config tree (with a plain `Processor`), value objects, any pure mapping. No
+  container, no database, fast.
+- **Integration.** A `TestKernel` boots a real container with your bundle in it. Everything else in
+  the repository rides on this.
+- **Functional.** A real request against a real database, for screens.
+
+### The TestKernel pattern
+
+```php
+final class TestKernel extends Kernel
+{
+    use MicroKernelTrait;
+
+    public function registerBundles(): iterable
+    {
+        yield new FrameworkBundle();
+        yield new DoctrineBundle();
+        yield new AcmeSightingsBundle();
+    }
+
+    protected function configureContainer(ContainerConfigurator $container): void
+    {
+        $container->extension('framework', ['secret' => 'test', 'test' => true, /* … */]);
+        $container->extension('doctrine', ['dbal' => ['url' => '%env(SIGHTINGS_TEST_DATABASE_URL)%']]);
+
+        // Stand in for the host's catalogue: tagged services are private, so a
+        // collector is what makes your contribution observable at all.
+        $container->services()
+            ->set(CollectedModules::class)
+            ->args([tagged_iterator('uhifadhi.module')])
+            ->public();
+    }
+
+    public function getCacheDir(): string { return sys_get_temp_dir().'/sightings-tests/cache'; }
+}
+```
+
+Point `KERNEL_CLASS` at it from `phpunit.dist.xml`.
+
+Two practical notes. **A private service cannot be fetched from a test** — expose a public alias or
+a collector fixture for exactly the things you need to observe, and nothing more. And **pop the
+error handler in `tearDown()`**: the framework's debug handler is registered during a kernel test
+and never popped, which PHPUnit reports as risky.
+
+```php
+while (true) {
+    $previous = set_exception_handler(static fn () => null);
+    restore_exception_handler();
+    if (null === $previous) { break; }
+    restore_exception_handler();
+}
+```
+
+### Standing in for the host
+
+Your bundle binds to host classes it does not depend on (`Uhifadhi\Entity\AreaOfInterest`, the
+widget framework). Do **not** require the host. Put minimal stand-ins under
+`tests/Fixtures/Uhifadhi/…` and map them in `autoload-dev`:
+
+```json
+"autoload-dev": {
+    "psr-4": {
+        "Acme\\Sightings\\Tests\\": "tests/",
+        "Uhifadhi\\Model\\": "tests/Fixtures/Uhifadhi/Model/"
+    }
+}
+```
+
+This is also why `class_exists()` is the wrong guard for a *bundle*: in your own test run those
+fixture classes are autoloadable whether or not any host is present. Check `kernel.bundles` when
+you mean "is this bundle in the kernel", and `class_exists()` only when you mean "did the host
+application define this class".
+
+### The test-database convention
+
+One database per bundle, named `<slug>_bundle_test`, addressed by a bundle-specific env var so two
+suites never collide:
+
+```xml
+<env name="SIGHTINGS_TEST_DATABASE_URL"
+     value="postgresql://app:app@127.0.0.1:5434/sightings_bundle_test?serverVersion=17&amp;charset=utf8"/>
+```
+
+If your bundle owns no entities, say so in a comment where the URL would have been and ship no
+database at all — an absence that is explained is not an omission.
+
+---
+
+## 8. CI
+
+One job, the same command a developer runs:
+
+```yaml
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  check:
+    strategy:
+      matrix: { php: ['8.4', '8.5'] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '${{ matrix.php }}', coverage: none, tools: 'composer:v2' }
+      - run: composer validate --strict
+      - run: composer update --no-interaction --no-progress --prefer-dist
+      - run: composer cs:check
+      - run: composer phpstan
+      - run: composer test
+```
+
+`composer update`, not `install`: a library should be tested against the dependency versions its
+constraints actually allow, and the lock file is not committed. Test the **whole** supported PHP
+range. If your suite needs a database, add a Postgres (or PostGIS) service and point your test env
+var at it.
+
+---
+
+## 9. Flex recipe and activation
+
+Installing a module should not be a checklist. A Flex recipe turns it into `composer require`.
+
+`manifest.json` in a recipe repository:
+
+```json
+{
+    "bundles": { "Acme\\Sightings\\AcmeSightingsBundle": ["all"] },
+    "copy-from-recipe": { "config/": "%CONFIG_DIR%/" },
+    "env": { "SIGHTINGS_API_KEY": "" }
+}
+```
+
+with `config/packages/sightings.yaml` alongside it:
+
+```yaml
+sightings:
+    module_category: biodiversity
+
+when@dev:
+    sightings:
+        dev_tools: true
+```
+
+`dev_tools` is a convention worth copying: gate seeders, fixtures and anything that writes invented
+data behind a flag the recipe enables only for `dev` and `test`, so production never grows a command
+that fabricates records.
+
+**What a recipe cannot do:** it copies files and registers bundles, but it will not merge new lines
+into an existing `importmap.php`. If you ship importmap assets, the three entries from chapter 4 are
+the one manual step, and your README has to say so.
+
+### After installing
+
+```bash
+bin/console app:seed:catalogue   # idempotent; your module joins the catalogue
+```
+
+Then switch the module on for an area from the Customize page — unless you declared `core()`, in
+which case it is already on.
