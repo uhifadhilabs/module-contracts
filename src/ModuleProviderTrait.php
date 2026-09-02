@@ -29,6 +29,11 @@ trait ModuleProviderTrait
         return false;
     }
 
+    public function core(): bool
+    {
+        return false;
+    }
+
     public function position(): int
     {
         return 0;

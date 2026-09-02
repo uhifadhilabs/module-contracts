@@ -47,6 +47,27 @@ interface ModuleProviderInterface
     /** Whether the module is pinned (always-on, first) in an area — e.g. the hub. */
     public function pinned(): bool;
 
+    /**
+     * CORE, i.e. platform machinery rather than a capability an area opts into.
+     *
+     * An installable module is INSTALLED but not switched on: the host seeds it
+     * into the catalogue parked, and an admin enables it per area. That is right
+     * for a capability an area may not want, and wrong for a module other
+     * surfaces already depend on — a map platform, say, whose absence does not
+     * mean "fewer features" but "four broken screens". A core module is seeded
+     * ACTIVE in every area instead.
+     *
+     * The word means "on by default", not "cannot be turned off": the host's
+     * Customize page still governs an area's modules, and installing or removing
+     * the bundle still governs whether the module exists at all. Nothing about
+     * being core makes a module a different KIND of thing — same contract, same
+     * bundle shape, same seams. It is a default, and only a default.
+     *
+     * Almost every module answers false (the trait's default). Say true only when
+     * a host would be broken without you.
+     */
+    public function core(): bool;
+
     /** Ordering hint within the catalogue; lower sorts first. */
     public function position(): int;
 

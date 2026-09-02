@@ -7,7 +7,7 @@ identically and the host registers both through one seam.
 ## `ModuleProviderInterface`
 
 Catalogue metadata (`slug`, `name`, `category`, `status`, `dataSource`, `pinned`, `position`,
-`icon`) plus the one capability beyond the legacy catalogue: **`entryRoute()`** — return `null`
+`icon`, `core`) plus the one capability beyond the legacy catalogue: **`entryRoute()`** — return `null`
 to render through the host's generic module page (what every built-in does today), or a route
 name to own your pages (the host links with the area's uuid).
 
@@ -32,7 +32,24 @@ final class SightingsModuleProvider implements ModuleProviderInterface
 ```
 
 The host autoconfigures every implementation (tag `uhifadhi.module`) and its catalogue seed
-ingests them.
+ingests them. A module shipped as a *reusable bundle* is **not** autoconfigured — tag
+`uhifadhi.module` explicitly in your extension.
+
+### Installable and core
+
+`core()` is the one tier distinction. An **installable** module (`core()` is `false`, the default)
+is seeded into the catalogue *parked*: installed, but switched on per area by an admin. A **core**
+module is seeded *active* in every area, because other surfaces already depend on it — the map
+platform is the first, and a host without it does not have fewer features, it has broken screens.
+
+Core means "on by default", not "cannot be turned off": the host's Customize page still governs an
+area's modules. Same contract, same bundle shape, same seams — the tier is a default, not a
+different kind of thing.
+
+## Building a module
+
+See **[docs/module-development.md](docs/module-development.md)** — the full guide from `composer.json`
+to a Flex recipe, written for someone building a custom module against these contracts.
 
 ## Development
 

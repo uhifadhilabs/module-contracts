@@ -48,6 +48,7 @@ final class ModuleProviderTraitTest extends TestCase
         self::assertSame('live', $provider->status());
         self::assertNull($provider->dataSource());
         self::assertFalse($provider->pinned());
+        self::assertFalse($provider->core(), 'A module is installable until it says otherwise — core is the exception.');
         self::assertSame(0, $provider->position());
         self::assertNull($provider->icon());
         self::assertNull($provider->entryRoute(), 'A generically-rendered module has no own entry route.');
@@ -121,5 +122,39 @@ final class ModuleProviderTraitTest extends TestCase
         self::assertSame('sightings_area', $provider->entryRoute(), 'A module owning its pages returns a route name.');
         self::assertSame('binoculars', $provider->icon());
         self::assertSame('live', $provider->status(), 'Untouched defaults still apply.');
+    }
+
+    /**
+     * The core tier: platform machinery other surfaces already depend on says so,
+     * and the host seeds it active rather than parked.
+     */
+    public function testACoreModuleSaysSo(): void
+    {
+        $provider = new class implements ModuleProviderInterface {
+            use ModuleProviderTrait;
+
+            public function slug(): string
+            {
+                return 'map';
+            }
+
+            public function name(): string
+            {
+                return 'Map';
+            }
+
+            public function category(): string
+            {
+                return 'operations';
+            }
+
+            public function core(): bool
+            {
+                return true;
+            }
+        };
+
+        self::assertTrue($provider->core());
+        self::assertFalse($provider->pinned(), 'Core is about the initial state, pinned is about the ordering — they are separate.');
     }
 }
