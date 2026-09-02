@@ -52,6 +52,12 @@ Three consequences worth stating:
 
 Platform machinery follows the same rule even when it contributes no catalogue tile of its own.
 
+The first-party modules use the composer vendor `uhifadhi/` (`uhifadhi/patrol-module`,
+`uhifadhi/module-contracts`, …); the repositories they are published from live under
+`github.com/uhifadhilabs`. A composer vendor and a GitHub organisation are separate
+namespaces and need not match — third-party modules pick their own vendor, as `acme/` does
+above.
+
 ---
 
 ## 2. The scaffold
@@ -93,7 +99,7 @@ sightings-module/
         "symfony/dependency-injection": "^7.3 || ^8.0",
         "symfony/framework-bundle": "^7.3 || ^8.0",
         "symfony/http-kernel": "^7.3 || ^8.0",
-        "uhifadhilabs/module-contracts": "^0.1"
+        "uhifadhi/module-contracts": "^0.1"
     },
     "autoload": { "psr-4": { "Acme\\Sightings\\": "src/" } },
     "autoload-dev": { "psr-4": { "Acme\\Sightings\\Tests\\": "tests/" } },

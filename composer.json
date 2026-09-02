@@ -1,5 +1,5 @@
 {
-    "name": "uhifadhilabs/module-contracts",
+    "name": "uhifadhi/module-contracts",
     "description": "The contract a uhifadhi module declares itself with — catalogue metadata plus an optional own entry route. Implemented by built-in modules and by installable module bundles alike.",
     "type": "library",
     "keywords": ["uhifadhi", "module", "contract", "symfony"],

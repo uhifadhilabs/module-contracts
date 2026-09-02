@@ -1,4 +1,4 @@
-# uhifadhilabs/module-contracts
+# uhifadhi/module-contracts
 
 The contract a [uhifadhi](https://github.com/uhifadhilabs) module declares itself with.
 MIT — public on purpose, so built-in modules and installable module bundles implement it
