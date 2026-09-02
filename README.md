@@ -13,21 +13,21 @@ name to own your pages (the host links with the area's uuid).
 
 One implementation = one module (the per-area capability shown in an area's module grid). By
 convention a bundle provides exactly one module named after itself; whatever lives *inside* a
-module (uhakiki's "campaigns", for instance) is the module's own internal concern and never
+module (a sightings module's "surveys", for instance) is the module's own internal concern and never
 appears in this contract.
 
 ```php
 use UhifadhiLabs\ModuleContracts\ModuleProviderInterface;
 use UhifadhiLabs\ModuleContracts\ModuleProviderTrait;
 
-final class UhakikiModuleProvider implements ModuleProviderInterface
+final class SightingsModuleProvider implements ModuleProviderInterface
 {
     use ModuleProviderTrait; // defaults for the optional methods
 
-    public function slug(): string     { return 'uhakiki'; }
-    public function name(): string     { return 'Uhakiki'; }
-    public function category(): string { return 'pressure'; }
-    public function entryRoute(): ?string { return 'uhakiki_area'; }
+    public function slug(): string     { return 'sightings'; }
+    public function name(): string     { return 'Sightings'; }
+    public function category(): string { return 'biodiversity'; }
+    public function entryRoute(): ?string { return 'sightings_area'; }
 }
 ```
 

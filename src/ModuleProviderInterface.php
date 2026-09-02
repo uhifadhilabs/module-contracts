@@ -8,8 +8,8 @@ namespace UhifadhiLabs\ModuleContracts;
  * How a uhifadhi module declares itself to the host — its catalogue metadata plus
  * an optional own entry route. One implementation = one module (the per-area
  * capability shown in an area's module grid). By convention a bundle provides
- * exactly one module named after itself; anything the module contains (uhakiki's
- * "campaigns", say) is the module's OWN internal concern and invisible here.
+ * exactly one module named after itself; anything the module contains (a sightings
+ * module's "surveys", say) is the module's OWN internal concern and invisible here.
  *
  * Built-in modules and installable module bundles implement this identically, so
  * the host can register both through one seam. `entryRoute()` is the one new
@@ -23,11 +23,11 @@ interface ModuleProviderInterface
 {
     /**
      * Stable identity + routing key: lowercase letters only, unique across
-     * modules (e.g. "forest", "uhakiki").
+     * modules (e.g. "forest", "sightings").
      */
     public function slug(): string;
 
-    /** Human display name shown in the grid and sub-nav (e.g. "Forest loss", "Uhakiki"). */
+    /** Human display name shown in the grid and sub-nav (e.g. "Forest loss", "Sightings"). */
     public function name(): string;
 
     /**

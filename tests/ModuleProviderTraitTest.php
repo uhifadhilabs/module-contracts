@@ -94,32 +94,32 @@ final class ModuleProviderTraitTest extends TestCase
 
             public function slug(): string
             {
-                return 'uhakiki';
+                return 'sightings';
             }
 
             public function name(): string
             {
-                return 'Uhakiki';
+                return 'Sightings';
             }
 
             public function category(): string
             {
-                return 'pressure';
+                return 'biodiversity';
             }
 
             public function entryRoute(): ?string // @phpstan-ignore return.unusedType (signature must match the interface)
             {
-                return 'uhakiki_area';
+                return 'sightings_area';
             }
 
             public function icon(): ?string // @phpstan-ignore return.unusedType (signature must match the interface)
             {
-                return 'shield-check';
+                return 'binoculars';
             }
         };
 
-        self::assertSame('uhakiki_area', $provider->entryRoute(), 'A module owning its pages returns a route name.');
-        self::assertSame('shield-check', $provider->icon());
+        self::assertSame('sightings_area', $provider->entryRoute(), 'A module owning its pages returns a route name.');
+        self::assertSame('binoculars', $provider->icon());
         self::assertSame('live', $provider->status(), 'Untouched defaults still apply.');
     }
 }
