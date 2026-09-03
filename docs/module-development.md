@@ -176,6 +176,68 @@ suggest. Grouping by domain again inside it re-answers a question the package al
 
 > Modules are the domain folders; inside them, folders are technical kinds.
 
+### Pointing at a person
+
+Sooner or later a Sightings record needs a name on it: who recorded the sighting, who verified it,
+whose dashboard layout this is. **Do not type-hint an account class.** The accounts of an
+installation belong to `uhifadhi/team-module`, and a module that named that bundle's `User` would
+be a module nobody can install without it — and one that could never be pointed at an
+installation's own account class instead.
+
+Take the contract:
+
+```php
+// src/Entity/Sighting.php (your bundle)
+namespace YourVendor\Sightings\Entity;
+
+use Doctrine\ORM\Mapping as ORM;
+use Uhifadhi\ModuleContracts\Entity\UserInterface;
+
+#[ORM\Entity]
+class Sighting
+{
+    #[ORM\ManyToOne(targetEntity: UserInterface::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?UserInterface $recordedBy = null;
+}
+```
+
+The interface holds no mapping of its own — the attributes are on your side, where the association
+is — and it imports nothing, so taking it costs your module nothing to install.
+
+**Then the installation resolves it**, exactly as it resolves the seam's area:
+
+```yaml
+# config/packages/doctrine.yaml (the installation)
+doctrine:
+    orm:
+        resolve_target_entities:
+            Uhifadhi\ModuleContracts\Entity\UserInterface: Uhifadhi\Team\Entity\User
+```
+
+Two things follow, and both are the area contract's lessons repeated. **Say so in your README and
+your recipe**, because a recipe cannot write that line for you: it has no way to know which class
+an installation calls its people. And **expect the schema, not the boot, to be what stops** without
+it — the container compiles and the kernel boots on an unresolved interface, but anything that
+walks the metadata (`doctrine:schema:create`, `doctrine:migrations:diff`) stops with
+`Class 'Uhifadhi\ModuleContracts\Entity\UserInterface' does not exist`.
+
+**A relation is not always the right answer.** Where the record is a UI scrap rather than a
+document — a saved layout, a dismissed hint — hold the person's `getUuidString()` in a plain
+column instead, so removing an account is never blocked by one. The rule is the same one that
+governs areas: a relation when the row is *about* the person, a stored uuid when the row merely
+*belongs* to them.
+
+**And it is not the security user.** `Symfony\Component\Security\Core\User\UserInterface` answers
+"who is signed in" and still comes from the token storage; this one answers "who is this record
+about". The short names collide, so alias one where a class needs both.
+
+The contract asks seven questions — `getId()`, `getUuidString()`, `getEmail()`, `getFirstName()`,
+`getLastName()`, `getFullName()`, `getRangerCode()` — and deliberately no more. It is not the
+account class with the word `interface` after it: passwords, tokens, roles and the position a
+person holds are the account owner's business. If your module needs something the seven do not
+answer, that is an argument to make for widening the contract, not a reason to reach past it.
+
 ### composer.json
 
 ```json
@@ -734,6 +796,13 @@ own association to that, and lets the host resolve it with
 contract the host satisfies; the stub that remains
 (`tests/Integration/Fixtures/Uhifadhi/Entity/AreaOfInterest.php`) exists only to play the *host* end
 of that resolution, which is the honest job of a stub.
+
+`UserInterface` is the same move made a second time, and it is worth reading as the pattern rather
+than as one contract: the modules that keep records about people all carried a stub of somebody
+else's account class, each one as true as the day it was copied. Publishing
+`Uhifadhi\ModuleContracts\Entity\UserInterface` — the seven questions those modules were measured
+to ask, and nothing else — retires all of them at once. What is left on the test side is the honest
+kind of stub again: a small class playing the *installation's* end of the resolution.
 
 Patrol's `tests/Fixtures/Uhifadhi/Module/DepartmentKpi.php` is the same shape one step earlier: a
 host value object patrol builds and hands back, impersonated so the suite can build one, and waiting

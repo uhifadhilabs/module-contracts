@@ -54,6 +54,37 @@ once for what ships by default. Those get separate words here: the runtime is th
 ordinary modules is **base**. "Base" also names the real test — a base module is one whose absence
 makes the installation *not uhifadhi*.
 
+## `Entity\UserInterface`
+
+The person a module's record points at. Almost every module keeps records with a name on them —
+who reported the incident, who led the patrol, whose dashboard layout this is — and the accounts
+themselves belong to `uhifadhi/team-module`. A module that type-hinted that bundle's `User` would
+be a module nobody can install without it, so it takes the contract and the installation resolves
+it:
+
+```php
+// src/Entity/Sighting.php (your bundle)
+use Uhifadhi\ModuleContracts\Entity\UserInterface;
+
+#[ORM\ManyToOne(targetEntity: UserInterface::class)]
+private ?UserInterface $recordedBy = null;
+```
+
+```yaml
+# config/packages/doctrine.yaml (the installation)
+doctrine:
+    orm:
+        resolve_target_entities:
+            Uhifadhi\ModuleContracts\Entity\UserInterface: Uhifadhi\Team\Entity\User
+```
+
+Seven questions — `getId`, `getUuidString`, `getEmail`, `getFirstName`, `getLastName`,
+`getFullName`, `getRangerCode` — and no more. It is a measured surface, not the account class with
+the word `interface` after it: passwords, tokens, roles and positions stay with whoever owns
+accounts. It imports nothing, carries no mapping of its own, and is **not**
+`Symfony\Component\Security\Core\User\UserInterface` — that one answers "who is signed in" and
+still comes from the token storage.
+
 ## Why one package?
 
 Symfony ships its contracts split per domain — `symfony/cache-contracts`,
