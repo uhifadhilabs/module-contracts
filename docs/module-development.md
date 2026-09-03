@@ -865,17 +865,18 @@ After that the ledger is `composer recipes`, which lists every installed recipe 
 with a newer version available. Naming one shows the detail:
 
 ```console
-$ composer recipes uhifadhi/map-module
+$ composer recipes your-vendor/sightings-module
 ```
 
 It reports the recipe version that was applied, the files it installed, and whether a newer recipe
-exists. When one does, `composer recipes:update uhifadhi/map-module` patch-merges that newer version
-into the project — it keeps the host's own edits where it can, rather than replacing the file
-outright the way `recipes:install --force` does.
+exists. When one does, `composer recipes:update your-vendor/sightings-module` patch-merges that
+newer version into the project — it keeps the host's own edits where it can, rather than replacing
+the file outright the way `recipes:install --force` does.
 
-A recipe may also ship a `post-install.txt` beside its `manifest.json` in the recipe's version
-directory. Flex prints it once, when the install finishes: the polite place for a module to state
-what it wrote and which steps are still the operator's.
+Flex also supports a `post-install.txt` beside the `manifest.json`, printed once when the install
+finishes. The uhifadhi recipes deliberately ship none — `composer recipes` is the discoverability
+story, and it answers months later as readily as it does on install day. The mechanism is there if
+your own module wants it.
 
 ### Three chokepoints between `composer require` and a schema
 
