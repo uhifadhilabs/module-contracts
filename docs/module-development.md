@@ -971,6 +971,41 @@ $ composer recipes
 A package that is silently missing from that listing, or a `composer require` that says
 `From auto-generated recipe`, means the endpoint is not being reached.
 
+### What a real install teaches that a test suite does not
+
+Each of these was found by installing into a project created from the skeleton
+(`uhifadhi/uhifadhi`) and serving a page, rather than by any bundle's own green suite.
+
+**Your dependency constraints meet reality at the first host, not at your CI.** A bundle whose
+suite runs `composer update` always resolves the newest of everything and never discovers that it
+pinned a major nobody else is on. The shell asked for `symfony/ux-icons ^2.20`, the application was
+on `^3.4`, and the two were simply uninstallable together — a thirty-second fix, found only because
+something tried to install both. Widen a constraint to every major you actually work on, and prove
+it by running your suite against each.
+
+**Anything your markup needs at render time must ship with you or degrade.** A bundle that names
+icons from a set the host happens to have installed renders holes on a host that does not, and one
+that fetches them on demand needs a network at build time. If your bundle's own chrome draws four
+glyphs, ship those four and register them under a prefix of your own in `prependExtension()` — never
+by extending a set the host also uses, which would make your bundle decide what the host's icon
+names mean.
+
+**A bundle cannot contribute an importmap entry, so its markup and its behaviour separate.** If your
+templates carry `data-controller` attributes, the Stimulus controllers behind them are the host's to
+add (chapter 4). Write the markup so that a missing controller is inert rather than broken, and say
+in your README which names you emit — an installation without them should render correctly and
+simply not animate.
+
+**Dependencies bring their own recipes, and those recipes ship files.** Requiring one bundle can
+install several: pulling in the shell (`uhifadhi/shell-module`) brings `symfony/twig-bundle` and
+`symfony/ux-icons`, and the stock Twig recipe writes a `templates/base.html.twig` that competes with
+whatever frame your bundle expects pages to extend. Read what an install actually wrote before
+committing it.
+
+**A knob that gates nothing is worse than a missing feature.** Writing this chapter's config file is
+where a reserved-for-later flag gets its promise spelled out for a stranger — and where it becomes
+obvious that nothing reads it. Ship the keys your bundle genuinely acts on; delete the rest.
+
 ### Unreleased packages need a stability floor
 
 While the modules are on `dev-main` and untagged, a host requiring one also needs
