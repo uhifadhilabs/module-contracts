@@ -93,6 +93,46 @@ sightings-module/
 └── tests/{Unit,Integration,Functional}/
 ```
 
+### The folder convention
+
+Folders under `src/` are named after **technical kinds** — `Entity`, `Repository`, `Service`,
+`Controller`, `Enum`, `Command`, `Model`, `DependencyInjection`. Flat, one level, the same names
+Symfony itself uses. Two of them are worth being precise about, because the line between them is
+where things get misfiled.
+
+**`src/Entity/` is what the database remembers.** These are your Doctrine-mapped classes: they have
+identity, they have a persistence lifecycle, migrations track their shape, repositories query them
+and the ORM hydrates them. The folder is about the contract with persistence, not about being a
+"business object" — which is why an *interface* that participates in that contract belongs here
+too. The trunk's `AreaInterface` is the example: it holds no data of its own, but a host resolves
+it to a real entity through `resolve_target_entities`, and Doctrine maps an association straight at
+it. It is part of the persistence contract, so it lives with the persistence contract.
+
+**`src/Model/` is what your code thinks in, but never persists.** Plain value objects and
+read-shapes: a row a service assembles for a template, a small immutable thing you pass around
+instead of an array. No ORM mapping, no repository, no migration. They are born inside a service,
+live for one request, and die.
+
+The practical test, when you are not sure: **would deleting the database lose it?** If yes, it is an
+Entity. If no — because the next request recomputes it from whatever *is* stored — it is a Model.
+
+### `src/Domain/` is banned
+
+Not because the name is ugly, but because it is a different **philosophy**, not different content.
+A `Domain/` folder groups classes *vertically*, by business concept, and holds exactly the same
+classes the horizontal folders hold — just sorted the other way. Running both is double bookkeeping,
+and running only the vertical one puts you in an argument, in every module, about where the seams
+between concepts fall.
+
+This product ran that experiment. It was organised into bounded contexts, and that structure was
+retired in August 2026 in favour of the flat host plus module bundles you are reading about now. The
+ruling that came out of it is the reason this section exists: **the module boundary already does the
+domain-grouping job.** Your module *is* the domain folder — a whole package of it, with its own
+composer.json, its own tests, its own release cadence and a hard edge that a directory name can only
+suggest. Grouping by domain again inside it re-answers a question the package already answered.
+
+> Modules are the domain folders; inside them, folders are technical kinds.
+
 ### composer.json
 
 ```json
@@ -677,11 +717,82 @@ that fabricates records.
 into an existing `importmap.php`. If you ship importmap assets, the three entries from chapter 4 are
 the one manual step, and your README has to say so.
 
+Nor can it write a line that depends on names only the host knows. If your bundle maps an
+association to an interface for the host to resolve (chapter 3), the recipe cannot fill in the host's
+class — so ship the `doctrine.orm.resolve_target_entities` block **as a comment** in your
+`config/packages/<alias>.yaml`, next to the reason, and make sure the bundle boots without it. The
+trunk's recipe does exactly that: install it and you get a working, deployment-wide catalogue; add
+the line when you have an area model and you get the per-area half too.
+
+### Check the endpoint actually answers
+
+A private recipe endpoint fails in the one way that looks like success. Flex asks for the index,
+gets a 404, falls back to an **auto-generated** recipe, and registers your bundle from its
+`"type": "symfony-bundle"` — so the install looks fine and everything the recipe ships beyond the
+bundle line silently never arrives. This went unnoticed across every module in this project until an
+install was audited end to end.
+
+The cause is host-based credentials. Composer attaches its GitHub token per host, and
+`raw.githubusercontent.com` is not `github.com` — so an endpoint on the raw domain is fetched
+anonymously and a private repository answers 404. Use the API's contents URL, which composer does
+authenticate:
+
+```jsonc
+"extra": {
+    "symfony": {
+        "endpoint": [
+            "https://api.github.com/repos/<org>/recipes/contents/index.json?ref=flex/main",
+            "flex://defaults"
+        ]
+    }
+}
+```
+
+Verify rather than assume — `composer recipes` names the source of every recipe it applied:
+
+```console
+$ composer recipes
+ * your-vendor/sightings-module (recipe not installed)   # endpoint reachable, recipe pending
+```
+
+A package that is silently missing from that listing, or a `composer require` that says
+`From auto-generated recipe`, means the endpoint is not being reached.
+
+### Unreleased packages need a stability floor
+
+While the modules are on `dev-main` and untagged, a host requiring one also needs
+`"minimum-stability": "dev"` with `"prefer-stable": true`. Composer will not resolve a **transitive**
+dev dependency under a stable floor: requiring `uhifadhi/trunk-module` fails asking you to name a
+version for `uhifadhi/module-contracts`, a package you never asked for. Root-requiring your
+dependency's dependencies is not a workaround, it is a trap for the next person. This goes away the
+day the packages carry tags.
+
+Packages outside packagist also need their own `repositories` entry in the host — composer does not
+inherit repositories from a dependency, so a private or VCS-hosted transitive dependency must be
+named at the root as well.
+
 ### After installing
 
 ```bash
-bin/console app:seed:catalogue   # idempotent; your module joins the catalogue
+bin/console trunk:catalogue:seed   # idempotent; your module joins the catalogue
 ```
+
+The command is namespaced to the bundle that owns it, `uhifadhi/trunk-module`, and keeps
+`app:seed:catalogue` as an alias because that string is written into deploy pipelines.
+
+It is safe to run on production and safe to run twice. Your module's catalogue row is refreshed from
+your provider every time — rename your module between releases and the catalogue follows, because it
+upserts by slug. Each area's on/off state and ordering is created once and never revisited, so a
+deploy cannot overrule an admin who parked your module, and uninstalling your bundle leaves every
+area's history where it was rather than deleting it.
 
 Then switch the module on for an area from the Customize page — unless you declared `core()`, in
 which case it is already on.
+
+**Zero modules is a working installation**, and it is worth knowing what that looks like, because it
+is the state your module arrives into:
+
+```console
+$ bin/console trunk:catalogue:seed
+ [OK] Catalogue reconciled: 0 module(s) from 0 installed provider(s); 0 area assignment(s) backfilled.
+```
