@@ -286,8 +286,8 @@ service `uhifadhi.module`. That is the entire registration protocol — no host 
 central list to edit.
 
 ```php
-use UhifadhiLabs\ModuleContracts\ModuleProviderInterface;
-use UhifadhiLabs\ModuleContracts\ModuleProviderTrait;
+use Uhifadhi\ModuleContracts\ModuleProviderInterface;
+use Uhifadhi\ModuleContracts\ModuleProviderTrait;
 
 final class SightingsModuleProvider implements ModuleProviderInterface
 {

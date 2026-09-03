@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace UhifadhiLabs\ModuleContracts;
+namespace Uhifadhi\ModuleContracts;
 
 /**
  * One granular permission a module DECLARES to the host — never grants.

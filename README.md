@@ -17,8 +17,8 @@ module (a sightings module's "surveys", for instance) is the module's own intern
 appears in this contract.
 
 ```php
-use UhifadhiLabs\ModuleContracts\ModuleProviderInterface;
-use UhifadhiLabs\ModuleContracts\ModuleProviderTrait;
+use Uhifadhi\ModuleContracts\ModuleProviderInterface;
+use Uhifadhi\ModuleContracts\ModuleProviderTrait;
 
 final class SightingsModuleProvider implements ModuleProviderInterface
 {

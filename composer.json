@@ -15,12 +15,12 @@
     },
     "autoload": {
         "psr-4": {
-            "UhifadhiLabs\\ModuleContracts\\": "src/"
+            "Uhifadhi\\ModuleContracts\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "UhifadhiLabs\\ModuleContracts\\Tests\\": "tests/"
+            "Uhifadhi\\ModuleContracts\\Tests\\": "tests/"
         }
     },
     "require-dev": {

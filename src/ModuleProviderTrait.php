@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace UhifadhiLabs\ModuleContracts;
+namespace Uhifadhi\ModuleContracts;
 
 /**
  * Sensible defaults for the optional parts of {@see ModuleProviderInterface},

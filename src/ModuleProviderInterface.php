@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace UhifadhiLabs\ModuleContracts;
+namespace Uhifadhi\ModuleContracts;
 
 /**
  * How a uhifadhi module declares itself to the host — its catalogue metadata plus

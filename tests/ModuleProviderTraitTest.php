@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace UhifadhiLabs\ModuleContracts\Tests;
+namespace Uhifadhi\ModuleContracts\Tests;
 
 use PHPUnit\Framework\TestCase;
-use UhifadhiLabs\ModuleContracts\ModulePermission;
-use UhifadhiLabs\ModuleContracts\ModuleProviderInterface;
-use UhifadhiLabs\ModuleContracts\ModuleProviderTrait;
+use Uhifadhi\ModuleContracts\ModulePermission;
+use Uhifadhi\ModuleContracts\ModuleProviderInterface;
+use Uhifadhi\ModuleContracts\ModuleProviderTrait;
 
 /**
  * The contract's only behaviour is the defaults trait: a provider that defines
