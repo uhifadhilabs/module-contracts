@@ -32,8 +32,8 @@ layer, and the namespace names the domain and argues with nobody.
 |---|---|---|
 | Composer name (uhifadhi-exclusive) | `<vendor>/<name>-module` | `your-vendor/sightings-module` |
 | Composer name (generic Symfony package) | `<vendor>/<name>-bundle` | — |
-| PHP namespace | the DOMAIN, no meta-word | `YourVendor\Sightings\Entity\Sighting` |
-| Bundle class (the one Symfony plug) | `<Vendor><Name>Bundle` | `YourVendor\Sightings\YourVendorSightingsBundle` |
+| PHP namespace | `<Vendor>\<Domain>\` — the composer vendor, then the DOMAIN, no meta-word | `YourVendor\Sightings\Entity\Sighting` |
+| Bundle class (the one Symfony plug) | `<Vendor><Domain>Bundle` | `YourVendor\Sightings\YourVendorSightingsBundle` |
 | Config alias (`extensionAlias`) | the bare domain word | `sightings:` |
 | Service ids | prefixed with the alias | `sightings.observation_repository` |
 | DB tables | prefixed with the domain word | `sightings_observation` |
@@ -63,6 +63,19 @@ The first-party modules use the composer vendor `uhifadhi/` (`uhifadhi/patrol-mo
 `uhifadhi/module-contracts`, …); the repositories they are published from live under
 `github.com/uhifadhilabs`. A composer vendor and a GitHub organisation are separate
 namespaces and need not match — yours need match neither.
+
+**The PHP namespace does follow the composer vendor, though**, and first-party code spells it out:
+vendor `uhifadhi` ↔ namespace `Uhifadhi\<Domain>\` ↔ class `Uhifadhi<Domain>Bundle`. So
+`uhifadhi/trunk-module` is `Uhifadhi\Trunk\` and `Uhifadhi\Trunk\UhifadhiTrunkBundle`;
+`uhifadhi/patrol-module` is `Uhifadhi\Patrol\` and `Uhifadhi\Patrol\UhifadhiPatrolBundle`. The
+GitHub organisation is not in that chain — `UhifadhiLabs\…` names nothing.
+
+**And the application is `App\`.** A project planted from the [uhifadhi
+seed](https://github.com/uhifadhilabs/uhifadhi) is a stock Symfony application with the stock root,
+which is exactly the point: `Uhifadhi\` is reserved for platform packages, so a class under
+`Uhifadhi\` is always somebody's bundle and never the host you installed it into. Bind to
+`App\Entity\…` in your own examples, and see [Stubs vs contracts](#stubs-vs-contracts) for the one
+place a module is allowed to write a host FQCN itself.
 
 ---
 
@@ -638,6 +651,47 @@ fixture classes are autoloadable whether or not any host is present. Check `kern
 you mean "is this bundle in the kernel", and `class_exists()` only when you mean "did the host
 application define this class".
 
+### Stubs vs contracts
+
+A stand-in of that kind is a **stub**, and a stub is a specific, disciplined thing: a class that
+**impersonates a real owner's FQCN byte-for-byte**. Not "something like the host's area" — the host's
+area, same namespace, same class name, so the seam your test exercises is the seam a real
+installation exercises. Anything less and the test proves your fixture works.
+
+Because a stub is a lie told on purpose, it is marked three ways, and all three are required:
+
+1. **By location.** It lives under `tests/Fixtures/<the impersonated tree>` — `tests/Fixtures/Uhifadhi/Entity/AreaOfInterest.php`, `tests/Fixtures/Uhifadhi/Module/DepartmentKpi.php`. The path
+   repeats the namespace, so the file's own directory names its victim.
+2. **By `autoload-dev`.** The mapping is dev-only, so a stub can never load in an application. If
+   the host is present, its real class is on the production autoloader and wins; if it is not, the
+   stub is only ever visible to your suite.
+3. **By docblock.** One paragraph, at the top: whose class this is, that it is a stub, and what the
+   real one is. The next person to read it is debugging something else.
+
+**They are debt, and the interest is real.** A stub is only as true as the day it was copied — the
+owner refactors, your suite stays green, and the first thing that notices is an installation. So
+stubs are retired **ring by ring**, replaced by an interface the owner publishes and the consumer
+binds to instead.
+
+`AreaInterface` is the model of the finished move. The trunk needs the host's area and does not have
+one, so it publishes `Uhifadhi\Trunk\Entity\AreaInterface` — `getId()` and nothing else — maps its
+own association to that, and lets the host resolve it with
+`doctrine.orm.resolve_target_entities`. What used to be an impersonation of a host class is now a
+contract the host satisfies; the stub that remains
+(`tests/Integration/Fixtures/Uhifadhi/Entity/AreaOfInterest.php`) exists only to play the *host* end
+of that resolution, which is the honest job of a stub.
+
+Patrol's `tests/Fixtures/Uhifadhi/Module/DepartmentKpi.php` is the same shape one ring earlier: a
+host value object patrol builds and hands back, impersonated so the suite can build one, and waiting
+for the ring that publishes it as a contract. When you find yourself writing a stub, write down
+which of those two states it is in.
+
+**One consequence for renames.** A stub does not follow its own bundle. When the trunk's code moved
+from `UhifadhiLabs\Trunk\` to `Uhifadhi\Trunk\`, the area stub stayed at `Uhifadhi\Entity\…`,
+because it belongs to the class it impersonates and that class did not move. A stub that gets
+swept up in a find-and-replace has quietly stopped impersonating anything, and nothing fails —
+which is exactly why this is written down.
+
 ### The test-database convention
 
 One database per bundle, named `<slug>_bundle_test`, addressed by a bundle-specific env var so two
@@ -783,30 +837,42 @@ ships the whole step — the entity to write as well as the block to uncomment.
 Generalise it as: **if your bundle cannot be schema'd until the host does something, that something
 is part of installing your bundle.** Put it in the recipe comment, the README and a test.
 
-**3. `App\Entity` in an example, in a project whose root is not `App\`.** doctrine-bundle's Flex
-recipe writes its `mappings` block for the `symfony/skeleton`, whose PSR-4 root is `App\`. The
-uhifadhi seed's root is `Uhifadhi\`. A project planted from the seed therefore had `src/Entity`
-mapped under a prefix nothing in it was in, and the failure arrived late and read like the
-developer's mistake:
+**3. An application that squatted a vendor namespace, and the mapping prefix that paid for it.**
+doctrine-bundle's Flex recipe writes its `mappings` block for the `symfony/skeleton`, whose PSR-4
+root is `App\`. The uhifadhi seed's root used to be `Uhifadhi\`. A project planted from the seed
+therefore had `src/Entity` mapped under a prefix nothing in it was in, and the failure arrived late
+and read like the developer's mistake:
 
 ```console
 The class 'Uhifadhi\Entity\AreaOfInterest' was not found in the chain
-configured namespaces App\Entity, UhifadhiLabs\Trunk\Entity
+configured namespaces App\Entity, Uhifadhi\Trunk\Entity
 ```
 
-Two fixes, both landed. The seed ships `config/packages/doctrine.yaml` with the prefix corrected and
-a comment saying why it differs from the recipe it came from — the seed is copied once and never
-updated, so a wrong line there is one every future installation inherits, which puts the edit in the
-same class as a version pin. And every example in the trunk, its recipe and this guide names a real
-root instead of `App\Entity`, because an example is copied far more often than it is read.
+The first fix was to correct the prefix in the seed's `config/packages/doctrine.yaml` and comment
+why it differed from the recipe it came from. That worked and was still the wrong fix, because it
+treated a symptom of the actual mistake: **the application had taken the platform's namespace.**
+`Uhifadhi\` is the composer vendor's, and the trunk, the modules and every future first-party
+package are under it. An application that also lives there makes "is this class the host's or a
+bundle's?" unanswerable by reading it — a question a stub, a boundary test and a doctrine prefix all
+have to answer.
 
-If you are writing examples for a host you do not control, use an obvious placeholder
-(`<YourRoot>\Entity\…`) rather than `App\Entity`. A placeholder gets substituted; a plausible wrong
-answer gets pasted.
+So the seed gave it back: a planted project is stock-Symfony `App\` now, `Uhifadhi\` means platform
+code, and the doctrine-bundle recipe's own prefix is correct again with nothing to override. The
+seed still ships the mapping block rather than leaving it to the recipe, for the reason the first
+fix had right: a seed is copied once and never updated, so a line missing there is missing from
+every future installation.
+
+Two rules survive the reversal. **Do not put your application in a vendor's namespace** — the
+convention costs nothing and buys a permanent answer to "whose class is this". And **in examples for
+a host you do not control, use an obvious placeholder** (`<YourRoot>\Entity\…`) rather than a
+concrete root: a placeholder gets substituted, a plausible-looking one gets pasted.
 
 **A fourth, smaller one, for anyone who keeps a licence header on `config/bundles.php`:** the bundle
-configurator regenerates that file wholesale on every `--force` and drops everything above `return
-[`. Check it after any recipe reinstall.
+configurator regenerates that file wholesale on every `composer recipes:install --force` and drops
+everything above `return [` — header, `declare(strict_types=1)`, all of it. Verified again on the
+create-project that proved this rename. It is a recipe-owned file with a hand-edited preamble, which
+is the same two-authors problem as above; check it after any recipe reinstall, and restore the
+preamble in the same commit rather than noticing three commits later.
 
 ### Check the endpoint actually answers
 
