@@ -13,6 +13,12 @@ New to the word "contract" as this platform uses it? Read
 **[What a contract is](what-is-a-contract.md)** first — it is one page, and everything in
 chapter 3 assumes it.
 
+**Reading the examples.** Every code block opens with a comment naming the file it belongs in,
+relative to the root of whatever it belongs to — your bundle unless the comment says otherwise.
+Where a block belongs somewhere else, the comment says which: `(the host application)`,
+`(your recipe repository)`. Files that do not exist yet are named the same way, because the path
+is the instruction: it says where you create it.
+
 ## Contents
 
 - [1. Naming](#1-naming)
@@ -70,6 +76,11 @@ which is where the temptation to be poetic is strongest.
 The platform's own names make the architecture a sentence:
 
 > **A module registers with the seam and renders in the shell.**
+
+Three nouns recur throughout this guide, and each is one package: the **skeleton**
+(`uhifadhi/uhifadhi`) that an installation is created from, the **seam**
+(`uhifadhi/seam-module`) that every module registers with, and the **shell**
+(`uhifadhi/shell-module`) that every module renders into.
 
 **About `your-vendor`.** Everything else in this guide is the real uhifadhi world — the host is
 uhifadhi, the seam tags are the tags, the host classes you bind to are the classes. The one
@@ -168,6 +179,7 @@ suggest. Grouping by domain again inside it re-answers a question the package al
 ### composer.json
 
 ```json
+# composer.json
 {
     "name": "your-vendor/sightings-module",
     "type": "symfony-bundle",
@@ -203,6 +215,7 @@ Extend `AbstractBundle` — it collapses the old Extension + Configuration + Bun
 one file.
 
 ```php
+// src/YourVendorSightingsBundle.php
 final class YourVendorSightingsBundle extends AbstractBundle
 {
     protected string $extensionAlias = 'sightings';
@@ -229,6 +242,7 @@ final class YourVendorSightingsBundle extends AbstractBundle
 writes a `doctrine.orm.mappings` block for your tables:
 
 ```php
+// src/YourVendorSightingsBundle.php
 if ($builder->hasExtension('doctrine')) {
     $container->extension('doctrine', ['orm' => ['mappings' => [
         'YourVendorSightings' => [
@@ -255,6 +269,7 @@ So `config/services.php` — **PHP, not YAML**, because a reusable bundle must n
 `symfony/yaml` onto its hosts, and FQCN references stay refactor-safe and PHPStan-checked:
 
 ```php
+// config/services.php
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 return static function (ContainerConfigurator $container): void {
@@ -282,6 +297,7 @@ Put it in its own class with a **static** `define()` so it is testable with a pl
 and shared verbatim by `configure()`:
 
 ```php
+// src/DependencyInjection/SightingsConfiguration.php
 final class SightingsConfiguration
 {
     public static function define(NodeDefinition|ArrayNodeDefinition $root): void
@@ -318,6 +334,7 @@ service `uhifadhi.module`. That is the entire registration protocol — no host 
 central list to edit.
 
 ```php
+// src/Module/SightingsModuleProvider.php
 use Uhifadhi\ModuleContracts\ModuleProviderInterface;
 use Uhifadhi\ModuleContracts\ModuleProviderTrait;
 
@@ -338,6 +355,7 @@ final class SightingsModuleProvider implements ModuleProviderInterface
 And in `loadExtension()`:
 
 ```php
+// src/YourVendorSightingsBundle.php
 $services->set('sightings.module_provider', SightingsModuleProvider::class)
     ->args([$category])
     ->tag('uhifadhi.module');
@@ -409,6 +427,7 @@ before setting it.
 A module **declares** permissions; it never grants them:
 
 ```php
+// src/Module/SightingsModuleProvider.php
 public function permissions(): array
 {
     return [new ModulePermission('sightings.verify', 'Sightings', 'Verify')];
@@ -449,6 +468,7 @@ vendor stylesheet's own images come along for free.
 `assets/` is yours to declare, in `prependExtension()`, the way `symfony/ux-turbo` does:
 
 ```php
+// src/YourVendorSightingsBundle.php
 if ($builder->hasExtension('framework') && interface_exists(AssetMapperInterface::class)) {
     $container->extension('framework', ['asset_mapper' => ['paths' => [
         \dirname(__DIR__).'/assets' => '@your-vendor/sightings-module',
@@ -470,6 +490,7 @@ contribute an entry to it. So the contract splits in two:
 - the **import names** are three lines in the host's `importmap.php`:
 
 ```php
+// importmap.php (the host application)
 'sightings/plate' => ['path' => '@your-vendor/sightings-module/plate.js'],
 ```
 
@@ -494,10 +515,12 @@ it in `assets/` gains nothing. Keep it in `public/` and link it from a layout. P
 **class constant** rather than expecting hosts to type it:
 
 ```php
+// src/YourVendorSightingsBundle.php
 public const string LEAFLET_JS = 'bundles/yourvendorsightings/leaflet/leaflet.js';
 ```
 
 ```twig
+{# templates/sightings/_base.html.twig #}
 <script src="{{ asset(constant('YourVendor\\Sightings\\YourVendorSightingsBundle::LEAFLET_JS')) }}"></script>
 ```
 
@@ -511,6 +534,7 @@ on the `<body>` as one JSON data attribute rendered by a Twig function your bund
 have the script read it with a sane default when the attribute is absent:
 
 ```php
+// src/Twig/SightingsExtension.php
 new TwigFunction('sightings_attributes', $this->attributes(...), ['is_safe' => ['html']]);
 ```
 
@@ -614,6 +638,7 @@ The pyramid, in the order a failure should reach you:
 ### The TestKernel pattern
 
 ```php
+// tests/TestKernel.php
 final class TestKernel extends Kernel
 {
     use MicroKernelTrait;
@@ -650,6 +675,7 @@ error handler in `tearDown()`**: the framework's debug handler is registered dur
 and never popped, which PHPUnit reports as risky.
 
 ```php
+// tests/Integration/SightingsKernelTestCase.php
 while (true) {
     $previous = set_exception_handler(static fn () => null);
     restore_exception_handler();
@@ -665,6 +691,7 @@ widget framework). Do **not** require the host. Put minimal stand-ins under
 `tests/Fixtures/Uhifadhi/…` and map them in `autoload-dev`:
 
 ```json
+# composer.json
 "autoload-dev": {
     "psr-4": {
         "YourVendor\\Sightings\\Tests\\": "tests/",
@@ -729,6 +756,7 @@ One database per bundle, named `<slug>_bundle_test`, addressed by a bundle-speci
 suites never collide:
 
 ```xml
+<!-- phpunit.dist.xml -->
 <env name="SIGHTINGS_TEST_DATABASE_URL"
      value="postgresql://app:app@127.0.0.1:5434/sightings_bundle_test?serverVersion=17&amp;charset=utf8"/>
 ```
@@ -743,6 +771,7 @@ database at all — an absence that is explained is not an omission.
 One job, the same command a developer runs:
 
 ```yaml
+# .github/workflows/ci.yml
 on:
   push: { branches: [main] }
   pull_request:
@@ -776,6 +805,7 @@ Installing a module should not be a checklist. A Flex recipe turns it into `comp
 `manifest.json` in a recipe repository:
 
 ```json
+# <vendor>/<package>/<version>/manifest.json (your recipe repository)
 {
     "bundles": { "YourVendor\\Sightings\\YourVendorSightingsBundle": ["all"] },
     "copy-from-recipe": { "config/": "%CONFIG_DIR%/" },
@@ -786,6 +816,7 @@ Installing a module should not be a checklist. A Flex recipe turns it into `comp
 with `config/packages/sightings.yaml` alongside it:
 
 ```yaml
+# <vendor>/<package>/<version>/config/packages/sightings.yaml (your recipe repository)
 sightings:
     module_category: biodiversity
 
@@ -919,6 +950,7 @@ anonymously and a private repository answers 404. Use the API's contents URL, wh
 authenticate:
 
 ```jsonc
+// composer.json (the host application)
 "extra": {
     "symfony": {
         "endpoint": [

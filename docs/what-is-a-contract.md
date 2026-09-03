@@ -36,8 +36,9 @@ It contains no answers and no machinery. It cannot be instantiated, it reads not
 writes nothing. It only states what a module must be able to say about itself.
 
 When a Sightings module wants to appear in the catalogue, it implements that interface — it
-**answers the questions**. The seam, which builds the catalogue, does not know Sightings exists.
-It asks every service tagged `uhifadhi.module` those same questions and files the answers.
+**answers the questions**. The seam (`uhifadhi/seam-module`), which builds the catalogue, does
+not know Sightings exists. It asks every service tagged `uhifadhi.module` those same questions
+and files the answers.
 
 So the arrows both point at the promise, and neither points sideways:
 

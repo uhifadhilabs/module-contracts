@@ -17,6 +17,7 @@ module (a sightings module's "surveys", for instance) is the module's own intern
 appears in this contract.
 
 ```php
+// src/Module/SightingsModuleProvider.php (your bundle)
 use Uhifadhi\ModuleContracts\ModuleProviderInterface;
 use Uhifadhi\ModuleContracts\ModuleProviderTrait;
 
