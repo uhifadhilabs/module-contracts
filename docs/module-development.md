@@ -215,7 +215,11 @@ doctrine:
             Uhifadhi\ModuleContracts\Entity\UserInterface: Uhifadhi\Team\Entity\User
 ```
 
-Two things follow, and both are the area contract's lessons repeated. **Say so in your README and
+Three things follow, and all three are the area contract's lessons repeated.
+**Merge, do not append**: that file already opens with `doctrine:`, and a second
+`doctrine:` key in one file is not valid YAML — the line goes under the existing
+`orm:`, and `resolve_target_entities` is one map that every contract of this
+kind shares. **Say so in your README and
 your recipe**, because a recipe cannot write that line for you: it has no way to know which class
 an installation calls its people. And **expect the schema, not the boot, to be what stops** without
 it — the container compiles and the kernel boots on an unresolved interface, but anything that

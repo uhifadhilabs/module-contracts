@@ -78,6 +78,10 @@ doctrine:
             Uhifadhi\ModuleContracts\Entity\UserInterface: Uhifadhi\Team\Entity\User
 ```
 
+`resolve_target_entities` is one map under the `doctrine:` block the file
+already opens with — merge into it rather than adding a second `doctrine:` key,
+which is not valid YAML.
+
 Seven questions — `getId`, `getUuidString`, `getEmail`, `getFirstName`, `getLastName`,
 `getFullName`, `getRangerCode` — and no more. It is a measured surface, not the account class with
 the word `interface` after it: passwords, tokens, roles and positions stay with whoever owns
