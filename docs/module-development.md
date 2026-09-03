@@ -100,10 +100,10 @@ vendor `uhifadhi` ↔ namespace `Uhifadhi\<Domain>\` ↔ class `Uhifadhi<Domain>
 `uhifadhi/patrol-module` is `Uhifadhi\Patrol\` and `Uhifadhi\Patrol\UhifadhiPatrolBundle`. The
 GitHub organisation is not in that chain — `UhifadhiLabs\…` names nothing.
 
-**And the application is `App\`.** A project planted from the [uhifadhi
-seed](https://github.com/uhifadhilabs/uhifadhi) is a stock Symfony application with the stock root,
-which is exactly the point: `Uhifadhi\` is reserved for platform packages, so a class under
-`Uhifadhi\` is always somebody's bundle and never the host you installed it into. Bind to
+**And the application is `App\`.** A project installed from the
+[uhifadhi skeleton](https://github.com/uhifadhilabs/uhifadhi) is a stock Symfony application with
+the stock root, which is exactly the point: `Uhifadhi\` is reserved for platform packages, so a
+class under `Uhifadhi\` is always somebody's bundle and never the host you installed it into. Bind to
 `App\Entity\…` in your own examples, and see [Stubs vs contracts](#stubs-vs-contracts) for the one
 place a module is allowed to write a host FQCN itself.
 
@@ -854,15 +854,38 @@ which half is which, and never interleave it with the recipe's text. Restoring o
 restoring an interleaved diff is an excavation, and the people doing it will be doing it on a day
 they were trying to do something else. Tell your users this in the file itself.
 
+### Reading what the recipe did
+
+A recipe writes into the installing project's working tree, never into `vendor/`. Flex's closing
+*"these files are yours"* line means exactly that: the copied files belong to the host now, land in
+the host's history and are edited freely. So the receipt for an install is `git diff` — run it
+before anything else and every line the recipe added is in front of you.
+
+After that the ledger is `composer recipes`, which lists every installed recipe and flags the ones
+with a newer version available. Naming one shows the detail:
+
+```console
+$ composer recipes uhifadhi/map-module
+```
+
+It reports the recipe version that was applied, the files it installed, and whether a newer recipe
+exists. When one does, `composer recipes:update uhifadhi/map-module` patch-merges that newer version
+into the project — it keeps the host's own edits where it can, rather than replacing the file
+outright the way `recipes:install --force` does.
+
+A recipe may also ship a `post-install.txt` beside its `manifest.json` in the recipe's version
+directory. Flex prints it once, when the install finishes: the polite place for a module to state
+what it wrote and which steps are still the operator's.
+
 ### Three chokepoints between `composer require` and a schema
 
-These come from a real `composer create-project` of the uhifadhi seed, followed exactly as written.
-They are here because each one is a shape any module can repeat, not because they are the seam's
-particular bugs.
+These come from a real `composer create-project` of the uhifadhi skeleton, followed exactly as
+written. They are here because each one is a shape any module can repeat, not because they are the
+seam's particular bugs.
 
 **1. Shipping tables without shipping the tool that creates them.** The seam contributed two
-entities and required `doctrine/doctrine-bundle` and the ORM, so it looked complete. It was not: a
-planted project's `bin/console list doctrine` offered `doctrine:schema:*` and no
+entities and required `doctrine/doctrine-bundle` and the ORM, so it looked complete. It was not: an
+installed project's `bin/console list doctrine` offered `doctrine:schema:*` and no
 `doctrine:migrations:*` at all, because nothing in the chain required
 `doctrine/doctrine-migrations-bundle`. The ritual fell back to `schema:create`, which is the command
 every deployment guide tells you never to use, and the fallback looked like a working install.
@@ -899,34 +922,34 @@ ships the whole step — the entity to write as well as the block to uncomment.
 Generalise it as: **if your bundle cannot be schema'd until the host does something, that something
 is part of installing your bundle.** Put it in the recipe comment, the README and a test.
 
-**3. An application that squatted a vendor namespace, and the mapping prefix that paid for it.**
+**3. An application that squats a vendor namespace, and the mapping prefix that pays for it.**
 doctrine-bundle's Flex recipe writes its `mappings` block for the `symfony/skeleton`, whose PSR-4
-root is `App\`. The uhifadhi seed's root used to be `Uhifadhi\`. A project planted from the seed
-therefore had `src/Entity` mapped under a prefix nothing in it was in, and the failure arrived late
-and read like the developer's mistake:
+root is `App\`. An application that gives itself a different root — `Uhifadhi\`, say — therefore has
+`src/Entity` mapped under a prefix nothing in it is in, and the failure arrives late and reads like
+the developer's mistake:
 
 ```console
 The class 'Uhifadhi\Entity\AreaOfInterest' was not found in the chain
 configured namespaces App\Entity, Uhifadhi\Seam\Entity
 ```
 
-The first fix was to correct the prefix in the seed's `config/packages/doctrine.yaml` and comment
-why it differed from the recipe it came from. That worked and was still the wrong fix, because it
-treated a symptom of the actual mistake: **the application had taken the platform's namespace.**
-`Uhifadhi\` is the composer vendor's, and the seam, the modules and every future first-party
-package are under it. An application that also lives there makes "is this class the host's or a
+The obvious fix is to correct the prefix in `config/packages/doctrine.yaml` and comment why it
+differs from the recipe it came from. That works and is still the wrong fix, because it treats a
+symptom of the actual mistake: **the application has taken the platform's namespace.** `Uhifadhi\`
+is the composer vendor's, and the seam, the modules and every future first-party package are under
+it. An application that also lives there makes "is this class the host's or a
 bundle's?" unanswerable by reading it — a question a stub, a boundary test and a doctrine prefix all
 have to answer.
 
-So the seed gave it back: a planted project is stock-Symfony `App\` now, `Uhifadhi\` means platform
-code, and the doctrine-bundle recipe's own prefix is correct again with nothing to override. The
-seed still ships the mapping block rather than leaving it to the recipe, for the reason the first
-fix had right: a seed is copied once and never updated, so a line missing there is missing from
-every future installation.
+So the namespace stays with the platform: a project installed from the skeleton is stock-Symfony
+`App\`, `Uhifadhi\` means platform code, and the doctrine-bundle recipe's own prefix is correct with
+nothing to override. The skeleton still ships the mapping block rather than leaving it to the
+recipe, for the reason the symptom-fix has right: a skeleton is copied once and never updated, so a
+line missing there is missing from every future installation.
 
-Two rules survive the reversal. **Do not put your application in a vendor's namespace** — the
-convention costs nothing and buys a permanent answer to "whose class is this". And **in examples for
-a host you do not control, use an obvious placeholder** (`<YourRoot>\Entity\…`) rather than a
+Two rules follow. **Do not put your application in a vendor's namespace** — the convention costs
+nothing and buys a permanent answer to "whose class is this". And **in examples for a host you do
+not control, use an obvious placeholder** (`<YourRoot>\Entity\…`) rather than a
 concrete root: a placeholder gets substituted, a plausible-looking one gets pasted.
 
 **A fourth, smaller one, for anyone who keeps a licence header on `config/bundles.php`:** the bundle
