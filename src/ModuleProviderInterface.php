@@ -11,7 +11,7 @@ namespace Uhifadhi\ModuleContracts;
  * exactly one module named after itself; anything the module contains (a sightings
  * module's "surveys", say) is the module's OWN internal concern and invisible here.
  *
- * Built-in modules and installable module bundles implement this identically, so
+ * Built-in and installed modules implement this identically, so
  * the host can register both through one seam. `entryRoute()` is the one new
  * capability over the legacy catalogue: return null to render through the host's
  * generic module page, or a route name to own your pages.

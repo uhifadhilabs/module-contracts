@@ -60,7 +60,7 @@ platform** are kept, and it holds nothing else: interfaces, the value objects th
 and the small traits that supply defaults. No services, no entities, no database, no framework
 wiring.
 
-That emptiness is the point. A module bundle depends on this package, and depending on it must
+That emptiness is the point. A module depends on this package, and depending on it must
 cost nothing — no runtime, no configuration, no transitive machinery, nothing to boot. A package
 of promises can be depended on by anything.
 
@@ -103,7 +103,7 @@ who implements them: today, only the host does. They are a promise between the s
 application that mounts it, not a promise between modules and the platform, so they belong with
 the shell's own material.
 
-The day a module bundle implements one — a module contributing its own sidebar row, say — that
+The day a module implements one — a module contributing its own sidebar row, say — that
 interface is **hoisted into this package**, because it has become something modules and the
 platform exchange. That is not hypothetical: it is exactly what happened to the Area contract,
 which lived in the host until modules needed it.

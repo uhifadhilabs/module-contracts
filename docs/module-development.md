@@ -168,7 +168,7 @@ and running only the vertical one puts you in an argument, in every module, abou
 between concepts fall.
 
 This product ran that experiment. It was organised into bounded contexts, and that structure was
-retired in August 2026 in favour of the flat host plus module bundles you are reading about now. The
+retired in August 2026 in favour of the flat host plus modules you are reading about now. The
 ruling that came out of it is the reason this section exists: **the module boundary already does the
 domain-grouping job.** Your module *is* the domain folder — a whole package of it, with its own
 composer.json, its own tests, its own release cadence and a hard edge that a directory name can only

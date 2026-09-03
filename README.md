@@ -1,7 +1,7 @@
 # uhifadhi/module-contracts
 
 The contract a [uhifadhi](https://github.com/uhifadhilabs) module declares itself with.
-MIT — public on purpose, so built-in modules and installable module bundles implement it
+MIT — public on purpose, so built-in and installed modules implement it
 identically and the host registers both through one seam.
 
 ## `ModuleProviderInterface`
