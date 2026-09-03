@@ -72,6 +72,9 @@ then that domain has an audience of its own and has earned its own package. Not 
 
 ## Building a module
 
+See **[docs/what-is-a-contract.md](docs/what-is-a-contract.md)** for what "contract" means here
+and why some of them live in this package while others live with the bundle they describe.
+
 See **[docs/module-development.md](docs/module-development.md)** — the full guide from `composer.json`
 to a Flex recipe, written for someone building a custom module against these contracts.
 

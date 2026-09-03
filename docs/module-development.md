@@ -9,6 +9,10 @@ The running example is a fictional **Sightings** module — wildlife observation
 area — because a made-up module can be shown end to end without pretending a real deployment
 works some particular way.
 
+New to the word "contract" as this platform uses it? Read
+**[What a contract is](what-is-a-contract.md)** first — it is one page, and everything in
+chapter 3 assumes it.
+
 ## Contents
 
 - [1. Naming](#1-naming)
@@ -52,27 +56,18 @@ Three consequences worth stating:
 
 Platform machinery follows the same rule even when it contributes no catalogue tile of its own.
 
-### Reserved words: the tree lives in prose
+### Name a package for what it does
 
-The platform is often described as a tree — a seed is planted, something carries, branches grow,
-and there is a crown you see. That picture is good writing and it stays in the READMEs and the
-growth docs, where a metaphor is doing a metaphor's job.
+**Capability modules take domain nouns** (`patrol`, `incident`, `roster`, `sightings`), and
+**platform packages take software nouns** for what they actually do.
 
-**It never appears in a package name, a namespace, a class name, an alias, a service id or a
-table prefix.** Anatomy words — *seed*, *trunk*, *root*, *branch*, *ring*, *canopy*, *crown*,
-*leaf* — say what a package is *like*, and a name has to say what it *is*. A newcomer reading
-`Uhifadhi\Canopy\` cannot tell whether it draws pages or stores foliage surveys, and a
-conservation platform is exactly the codebase where "canopy" plausibly means real canopy.
+Metaphors are not names. A word that says what a package is *like* leaves a reader guessing what
+it *is*, and on a conservation platform that guess is expensive: `Uhifadhi\Canopy\` could
+plausibly draw pages or store foliage surveys, and nothing in the name settles it. Your own module
+is almost certainly a domain noun already — the rule mostly bites when naming infrastructure,
+which is where the temptation to be poetic is strongest.
 
-So: **capability modules take domain nouns** (`patrol`, `incident`, `roster`, `sightings`), and
-**platform packages take software nouns** for what they actually do. Your own module is almost
-certainly a domain noun already — the rule mostly bites when naming infrastructure, which is
-where the temptation to be poetic is strongest.
-
-The platform's own two packages were renamed to obey this, which is how the rule got written:
-`uhifadhi/trunk-module` became **`uhifadhi/seam-module`** and `uhifadhi/canopy-module` became
-**`uhifadhi/shell-module`**. The sentence they now make is the whole architecture, and it needs no
-metaphor to parse:
+The platform's own names make the architecture a sentence:
 
 > **A module registers with the seam and renders in the shell.**
 
