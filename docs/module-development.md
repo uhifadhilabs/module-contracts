@@ -724,8 +724,8 @@ Because a stub is a lie told on purpose, it is marked three ways, and all three 
 
 **They are debt, and the interest is real.** A stub is only as true as the day it was copied — the
 owner refactors, your suite stays green, and the first thing that notices is an installation. So
-stubs are retired **ring by ring**, replaced by an interface the owner publishes and the consumer
-binds to instead.
+stubs are retired **release by release**, replaced by an interface the owner publishes and the
+consumer binds to instead.
 
 `AreaInterface` is the model of the finished move. The seam needs the host's area and does not have
 one, so it publishes `Uhifadhi\Seam\Entity\AreaInterface` — `getId()` and nothing else — maps its
@@ -735,9 +735,9 @@ contract the host satisfies; the stub that remains
 (`tests/Integration/Fixtures/Uhifadhi/Entity/AreaOfInterest.php`) exists only to play the *host* end
 of that resolution, which is the honest job of a stub.
 
-Patrol's `tests/Fixtures/Uhifadhi/Module/DepartmentKpi.php` is the same shape one ring earlier: a
+Patrol's `tests/Fixtures/Uhifadhi/Module/DepartmentKpi.php` is the same shape one step earlier: a
 host value object patrol builds and hands back, impersonated so the suite can build one, and waiting
-for the ring that publishes it as a contract. When you find yourself writing a stub, write down
+for the release that publishes it as a contract. When you find yourself writing a stub, write down
 which of those two states it is in.
 
 **One consequence for renames.** A stub does not follow its own bundle. The seam's code has been
