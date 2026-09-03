@@ -720,9 +720,93 @@ the one manual step, and your README has to say so.
 Nor can it write a line that depends on names only the host knows. If your bundle maps an
 association to an interface for the host to resolve (chapter 3), the recipe cannot fill in the host's
 class — so ship the `doctrine.orm.resolve_target_entities` block **as a comment** in your
-`config/packages/<alias>.yaml`, next to the reason, and make sure the bundle boots without it. The
-trunk's recipe does exactly that: install it and you get a working, deployment-wide catalogue; add
-the line when you have an area model and you get the per-area half too.
+`config/packages/<alias>.yaml`, next to the reason, and make sure the bundle boots without it.
+
+Then say honestly how far the host gets before it writes that line, and **test the answer** rather
+than assuming it. "Boots without it" and "works without it" are different claims, and the trunk's
+recipe asserted the second for months while only the first was true — see
+[the chokepoints](#three-chokepoints-between-composer-require-and-a-schema) below.
+
+### The host's half of a recipe-owned file
+
+Where the host does have to add a block, the file becomes two authors' work, and Flex has an opinion
+about that: `composer recipes:install <pkg> --force` **overwrites** recipe-owned files with the
+recipe's version, then tells you to sort it out with `git diff` and `git checkout -p`.
+
+So put the host's addition in one contiguous block at the **end** of the file, under a marker saying
+which half is which, and never interleave it with the recipe's text. Restoring one hunk is a review;
+restoring an interleaved diff is an excavation, and the people doing it will be doing it on a day
+they were trying to do something else. Tell your users this in the file itself.
+
+### Three chokepoints between `composer require` and a schema
+
+These come from a real `composer create-project` of the uhifadhi seed, followed exactly as written.
+They are here because each one is a shape any module can repeat, not because they are the trunk's
+particular bugs.
+
+**1. Shipping tables without shipping the tool that creates them.** The trunk contributed two
+entities and required `doctrine/doctrine-bundle` and the ORM, so it looked complete. It was not: a
+planted project's `bin/console list doctrine` offered `doctrine:schema:*` and no
+`doctrine:migrations:*` at all, because nothing in the chain required
+`doctrine/doctrine-migrations-bundle`. The ritual fell back to `schema:create`, which is the command
+every deployment guide tells you never to use, and the fallback looked like a working install.
+
+The rule: **if your bundle contributes a table, require the migration bundle.** Owning tables is
+owning the need for the tool that creates them, exactly as it is owning the need for the ORM that
+maps them.
+
+The other half of that rule: **do not ship migration versions.** The tables are yours; the migration
+history belongs to the installation. A vendor replaying its own versions into a host's history has
+to be diffed around forever afterwards. `doctrine:migrations:diff` on the host is the honest seam.
+
+**2. Claiming the host's resolution step is optional when it is not.** The trunk's recipe said an
+installation without `resolve_target_entities` simply went without the per-area half. It goes
+without a schema. The association is `NOT NULL`, so everything that walks the metadata stops:
+
+```console
+$ bin/console doctrine:schema:create
+In MappingException.php line 72:
+  Class 'UhifadhiLabs\Trunk\Entity\AreaInterface' does not exist
+```
+
+Booting still works, and that part is worth keeping true — a host between `composer require` and its
+first entity must not be in a broken state. But "boots" was being sold as "installs".
+
+The choice was between making the claim true and making the documentation true. A bundle can make it
+true by shipping a minimal concrete target its recipe wires by default, and that was **rejected**:
+it would have the trunk define an area model, which is the one thing its charter says belongs to the
+host, and it would put a stray table in every installation that never noticed — payable later as a
+real migration on the day the host maps its own. So the documentation moved instead. The recipe now
+says *required*, quotes the error verbatim so the answer is in the file the error is about, and
+ships the whole step — the entity to write as well as the block to uncomment.
+
+Generalise it as: **if your bundle cannot be schema'd until the host does something, that something
+is part of installing your bundle.** Put it in the recipe comment, the README and a test.
+
+**3. `App\Entity` in an example, in a project whose root is not `App\`.** doctrine-bundle's Flex
+recipe writes its `mappings` block for the `symfony/skeleton`, whose PSR-4 root is `App\`. The
+uhifadhi seed's root is `Uhifadhi\`. A project planted from the seed therefore had `src/Entity`
+mapped under a prefix nothing in it was in, and the failure arrived late and read like the
+developer's mistake:
+
+```console
+The class 'Uhifadhi\Entity\AreaOfInterest' was not found in the chain
+configured namespaces App\Entity, UhifadhiLabs\Trunk\Entity
+```
+
+Two fixes, both landed. The seed ships `config/packages/doctrine.yaml` with the prefix corrected and
+a comment saying why it differs from the recipe it came from — the seed is copied once and never
+updated, so a wrong line there is one every future installation inherits, which puts the edit in the
+same class as a version pin. And every example in the trunk, its recipe and this guide names a real
+root instead of `App\Entity`, because an example is copied far more often than it is read.
+
+If you are writing examples for a host you do not control, use an obvious placeholder
+(`<YourRoot>\Entity\…`) rather than `App\Entity`. A placeholder gets substituted; a plausible wrong
+answer gets pasted.
+
+**A fourth, smaller one, for anyone who keeps a licence header on `config/bundles.php`:** the bundle
+configurator regenerates that file wholesale on every `--force` and drops everything above `return
+[`. Check it after any recipe reinstall.
 
 ### Check the endpoint actually answers
 
@@ -774,10 +858,15 @@ named at the root as well.
 ### After installing
 
 ```bash
-bin/console trunk:catalogue:seed   # idempotent; your module joins the catalogue
+bin/console doctrine:migrations:diff      # if your module added tables
+bin/console doctrine:migrations:migrate
+bin/console trunk:catalogue:seed          # idempotent; your module joins the catalogue
 ```
 
-The command is namespaced to the bundle that owns it, `uhifadhi/trunk-module`, and keeps
+The `diff` is the host's, not yours — see chokepoint 1 above for why a bundle that owns tables
+requires the migration bundle and ships no versions.
+
+The seed command is namespaced to the bundle that owns it, `uhifadhi/trunk-module`, and keeps
 `app:seed:catalogue` as an alias because that string is written into deploy pipelines.
 
 It is safe to run on production and safe to run twice. Your module's catalogue row is refreshed from
