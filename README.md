@@ -35,16 +35,23 @@ The host autoconfigures every implementation (tag `uhifadhi.module`) and its cat
 ingests them. A module shipped as a *reusable bundle* is **not** autoconfigured — tag
 `uhifadhi.module` explicitly in your extension.
 
-### Installable and core
+### Installable and base
 
-`core()` is the one tier distinction. An **installable** module (`core()` is `false`, the default)
-is seeded into the catalogue *parked*: installed, but switched on per area by an admin. A **core**
+`base()` is the one tier distinction. An **installable** module (`base()` is `false`, the default)
+is seeded into the catalogue *parked*: installed, but switched on per area by an admin. A **base**
 module is seeded *active* in every area, because other surfaces already depend on it — the map
 platform is the first, and a host without it does not have fewer features, it has broken screens.
 
-Core means "on by default", not "cannot be turned off": the host's Customize page still governs an
+Base means "on by default", not "cannot be turned off": the host's Customize page still governs an
 area's modules. Same contract, same bundle shape, same seams — the tier is a default, not a
 different kind of thing.
+
+The word is **base**, and it used to be "core". "Core" marks a thing as important without saying
+what it is, and it is the word a codebase reaches for twice — once for the runtime at the centre,
+once for what ships by default. Those get separate words here: the runtime is the **seam**
+(`uhifadhi/seam-module`, what your provider registers with), and the always-present tier of
+ordinary modules is **base**. "Base" also names the real test — a base module is one whose absence
+makes the installation *not uhifadhi*.
 
 ## Why one package?
 

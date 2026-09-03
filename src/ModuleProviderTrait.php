@@ -29,7 +29,7 @@ trait ModuleProviderTrait
         return false;
     }
 
-    public function core(): bool
+    public function base(): bool
     {
         return false;
     }

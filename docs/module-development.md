@@ -52,6 +52,30 @@ Three consequences worth stating:
 
 Platform machinery follows the same rule even when it contributes no catalogue tile of its own.
 
+### Reserved words: the tree lives in prose
+
+The platform is often described as a tree — a seed is planted, something carries, branches grow,
+and there is a crown you see. That picture is good writing and it stays in the READMEs and the
+growth docs, where a metaphor is doing a metaphor's job.
+
+**It never appears in a package name, a namespace, a class name, an alias, a service id or a
+table prefix.** Anatomy words — *seed*, *trunk*, *root*, *branch*, *ring*, *canopy*, *crown*,
+*leaf* — say what a package is *like*, and a name has to say what it *is*. A newcomer reading
+`Uhifadhi\Canopy\` cannot tell whether it draws pages or stores foliage surveys, and a
+conservation platform is exactly the codebase where "canopy" plausibly means real canopy.
+
+So: **capability modules take domain nouns** (`patrol`, `incident`, `roster`, `sightings`), and
+**platform packages take software nouns** for what they actually do. Your own module is almost
+certainly a domain noun already — the rule mostly bites when naming infrastructure, which is
+where the temptation to be poetic is strongest.
+
+The platform's own two packages were renamed to obey this, which is how the rule got written:
+`uhifadhi/trunk-module` became **`uhifadhi/seam-module`** and `uhifadhi/canopy-module` became
+**`uhifadhi/shell-module`**. The sentence they now make is the whole architecture, and it needs no
+metaphor to parse:
+
+> **A module registers with the seam and renders in the shell.**
+
 **About `your-vendor`.** Everything else in this guide is the real uhifadhi world — the host is
 uhifadhi, the seam tags are the tags, the host classes you bind to are the classes. The one
 placeholder is the example module's *own* identity: replace `your-vendor` with whatever vendor
@@ -66,7 +90,7 @@ namespaces and need not match — yours need match neither.
 
 **The PHP namespace does follow the composer vendor, though**, and first-party code spells it out:
 vendor `uhifadhi` ↔ namespace `Uhifadhi\<Domain>\` ↔ class `Uhifadhi<Domain>Bundle`. So
-`uhifadhi/trunk-module` is `Uhifadhi\Trunk\` and `Uhifadhi\Trunk\UhifadhiTrunkBundle`;
+`uhifadhi/seam-module` is `Uhifadhi\Seam\` and `Uhifadhi\Seam\UhifadhiSeamBundle`;
 `uhifadhi/patrol-module` is `Uhifadhi\Patrol\` and `Uhifadhi\Patrol\UhifadhiPatrolBundle`. The
 GitHub organisation is not in that chain — `UhifadhiLabs\…` names nothing.
 
@@ -117,7 +141,7 @@ where things get misfiled.
 identity, they have a persistence lifecycle, migrations track their shape, repositories query them
 and the ORM hydrates them. The folder is about the contract with persistence, not about being a
 "business object" — which is why an *interface* that participates in that contract belongs here
-too. The trunk's `AreaInterface` is the example: it holds no data of its own, but a host resolves
+too. The seam's `AreaInterface` is the example: it holds no data of its own, but a host resolves
 it to a real entity through `resolve_target_entities`, and Doctrine maps an association straight at
 it. It is part of the persistence contract, so it lives with the persistence contract.
 
@@ -344,37 +368,45 @@ host's own enums, and anything unrecognised falls back to a safe default. A typo
 cannot break the seed for everyone else — but it also will not be reported to you, so check the
 tile.
 
-### Core vs installable
+### Base vs installable
 
-`core()` decides only the **initial per-area state**:
+`base()` decides only the **initial per-area state**:
 
-| | `core()` | Seeded per area as | For |
+| | `base()` | Seeded per area as | For |
 |---|---|---|---|
 | Installable (default) | `false` | parked — an admin switches it on | a capability an area may not want |
-| Core | `true` | active | platform machinery other surfaces already depend on |
+| Base | `true` | active | platform machinery other surfaces already depend on |
 
 Say `true` only when a host without you would not have *fewer features* but *broken screens* — the
 map platform is the first module in the platform to qualify, because patrol plates, incident
 plates, the area overview and the zones editor all import its assets.
 
-**The not-uhifadhi test.** A core module is one whose absence makes the installation *not
+**The not-uhifadhi test.** A base module is one whose absence makes the installation *not
 uhifadhi*. If a deployment without your module is still recognisably the product — poorer, but
-the product — then it is a branch, not core. Almost everything is a branch. The current core set
-is `map`, `team`, `widget` and `area` (the trunk and the canopy are the tree itself, a tier above
-modules and not subject to this question at all).
+the product — then it is installable, not base. Almost everything is installable. The current base
+set is `map`, `team`, `widget` and `area` (the seam runtime and the shell are the platform itself,
+a tier above modules and not subject to this question at all).
+
+**Why "base" and not "core".** "Core" marks something as important without saying what it *is*, and
+it is the word a codebase reaches for twice — once for the runtime at the centre, once for what
+ships by default. This platform has both, so they get separate words: the runtime is the **seam**
+(`uhifadhi/seam-module`, the package your provider registers with), and the always-present tier of
+ordinary modules is **base**. "Base" also names the test above, which "core" never did — the floor
+the product stands on, rather than a ranking of importance. The contract method was `core()` until
+this was settled.
 
 The word then means two different things at two levels, and they are worth keeping apart:
 
-- **Deployment level.** Core modules are in the project template's requires, so they are present
+- **Deployment level.** Base modules are in the project template's requires, so they are present
   in every installation by definition. Nobody edits them out; wanting to remove one is not a
   configuration need, it is evidence the module was misclassified.
-- **Area level.** Whether a core module can be hidden for a *particular* area is a separate and
-  much smaller question. `core()` seeds it active rather than parked, and beyond that the seam
+- **Area level.** Whether a base module can be hidden for a *particular* area is a separate and
+  much smaller question. `base()` seeds it active rather than parked, and beyond that the seam
   does not currently enforce anything — the Customize page will still switch it off, and doing so
   unloads nothing and takes no assets away. Whether it *should* be allowed to is an open host
   ruling, not a settled rule this guide can hand you.
 
-So `core()` is a default about seeding, and the not-uhifadhi test is the question you answer
+So `base()` is a default about seeding, and the not-uhifadhi test is the question you answer
 before setting it.
 
 ### Permissions
@@ -673,8 +705,8 @@ owner refactors, your suite stays green, and the first thing that notices is an 
 stubs are retired **ring by ring**, replaced by an interface the owner publishes and the consumer
 binds to instead.
 
-`AreaInterface` is the model of the finished move. The trunk needs the host's area and does not have
-one, so it publishes `Uhifadhi\Trunk\Entity\AreaInterface` — `getId()` and nothing else — maps its
+`AreaInterface` is the model of the finished move. The seam needs the host's area and does not have
+one, so it publishes `Uhifadhi\Seam\Entity\AreaInterface` — `getId()` and nothing else — maps its
 own association to that, and lets the host resolve it with
 `doctrine.orm.resolve_target_entities`. What used to be an impersonation of a host class is now a
 contract the host satisfies; the stub that remains
@@ -686,11 +718,15 @@ host value object patrol builds and hands back, impersonated so the suite can bu
 for the ring that publishes it as a contract. When you find yourself writing a stub, write down
 which of those two states it is in.
 
-**One consequence for renames.** A stub does not follow its own bundle. When the trunk's code moved
-from `UhifadhiLabs\Trunk\` to `Uhifadhi\Trunk\`, the area stub stayed at `Uhifadhi\Entity\…`,
-because it belongs to the class it impersonates and that class did not move. A stub that gets
-swept up in a find-and-replace has quietly stopped impersonating anything, and nothing fails —
-which is exactly why this is written down.
+**One consequence for renames.** A stub does not follow its own bundle. The seam's code has been
+renamed twice — `UhifadhiLabs\Trunk\` → `Uhifadhi\Trunk\` → `Uhifadhi\Seam\` — and through both
+the area stub stayed exactly where it was, at `Uhifadhi\Entity\…`, because it belongs to the class
+it impersonates and that class never moved.
+
+This is the rule that a find-and-replace breaks silently. Sweep a stub up with the rest and nothing
+fails: the suite still passes, because a stub the bundle also renamed is just a class the bundle is
+talking to itself with. It has stopped impersonating anything, and it will keep passing right up
+until an installation disagrees. When you rename, the stubs are the files you skip on purpose.
 
 ### The test-database convention
 
@@ -777,7 +813,7 @@ class — so ship the `doctrine.orm.resolve_target_entities` block **as a commen
 `config/packages/<alias>.yaml`, next to the reason, and make sure the bundle boots without it.
 
 Then say honestly how far the host gets before it writes that line, and **test the answer** rather
-than assuming it. "Boots without it" and "works without it" are different claims, and the trunk's
+than assuming it. "Boots without it" and "works without it" are different claims, and the seam's
 recipe asserted the second for months while only the first was true — see
 [the chokepoints](#three-chokepoints-between-composer-require-and-a-schema) below.
 
@@ -795,10 +831,10 @@ they were trying to do something else. Tell your users this in the file itself.
 ### Three chokepoints between `composer require` and a schema
 
 These come from a real `composer create-project` of the uhifadhi seed, followed exactly as written.
-They are here because each one is a shape any module can repeat, not because they are the trunk's
+They are here because each one is a shape any module can repeat, not because they are the seam's
 particular bugs.
 
-**1. Shipping tables without shipping the tool that creates them.** The trunk contributed two
+**1. Shipping tables without shipping the tool that creates them.** The seam contributed two
 entities and required `doctrine/doctrine-bundle` and the ORM, so it looked complete. It was not: a
 planted project's `bin/console list doctrine` offered `doctrine:schema:*` and no
 `doctrine:migrations:*` at all, because nothing in the chain required
@@ -813,14 +849,14 @@ The other half of that rule: **do not ship migration versions.** The tables are 
 history belongs to the installation. A vendor replaying its own versions into a host's history has
 to be diffed around forever afterwards. `doctrine:migrations:diff` on the host is the honest seam.
 
-**2. Claiming the host's resolution step is optional when it is not.** The trunk's recipe said an
+**2. Claiming the host's resolution step is optional when it is not.** The seam's recipe said an
 installation without `resolve_target_entities` simply went without the per-area half. It goes
 without a schema. The association is `NOT NULL`, so everything that walks the metadata stops:
 
 ```console
 $ bin/console doctrine:schema:create
 In MappingException.php line 72:
-  Class 'Uhifadhi\Trunk\Entity\AreaInterface' does not exist
+  Class 'Uhifadhi\Seam\Entity\AreaInterface' does not exist
 ```
 
 Booting still works, and that part is worth keeping true — a host between `composer require` and its
@@ -828,7 +864,7 @@ first entity must not be in a broken state. But "boots" was being sold as "insta
 
 The choice was between making the claim true and making the documentation true. A bundle can make it
 true by shipping a minimal concrete target its recipe wires by default, and that was **rejected**:
-it would have the trunk define an area model, which is the one thing its charter says belongs to the
+it would have the seam define an area model, which is the one thing its charter says belongs to the
 host, and it would put a stray table in every installation that never noticed — payable later as a
 real migration on the day the host maps its own. So the documentation moved instead. The recipe now
 says *required*, quotes the error verbatim so the answer is in the file the error is about, and
@@ -845,13 +881,13 @@ and read like the developer's mistake:
 
 ```console
 The class 'Uhifadhi\Entity\AreaOfInterest' was not found in the chain
-configured namespaces App\Entity, Uhifadhi\Trunk\Entity
+configured namespaces App\Entity, Uhifadhi\Seam\Entity
 ```
 
 The first fix was to correct the prefix in the seed's `config/packages/doctrine.yaml` and comment
 why it differed from the recipe it came from. That worked and was still the wrong fix, because it
 treated a symptom of the actual mistake: **the application had taken the platform's namespace.**
-`Uhifadhi\` is the composer vendor's, and the trunk, the modules and every future first-party
+`Uhifadhi\` is the composer vendor's, and the seam, the modules and every future first-party
 package are under it. An application that also lives there makes "is this class the host's or a
 bundle's?" unanswerable by reading it — a question a stub, a boundary test and a doctrine prefix all
 have to answer.
@@ -912,7 +948,7 @@ A package that is silently missing from that listing, or a `composer require` th
 
 While the modules are on `dev-main` and untagged, a host requiring one also needs
 `"minimum-stability": "dev"` with `"prefer-stable": true`. Composer will not resolve a **transitive**
-dev dependency under a stable floor: requiring `uhifadhi/trunk-module` fails asking you to name a
+dev dependency under a stable floor: requiring `uhifadhi/seam-module` fails asking you to name a
 version for `uhifadhi/module-contracts`, a package you never asked for. Root-requiring your
 dependency's dependencies is not a workaround, it is a trap for the next person. This goes away the
 day the packages carry tags.
@@ -926,13 +962,13 @@ named at the root as well.
 ```bash
 bin/console doctrine:migrations:diff      # if your module added tables
 bin/console doctrine:migrations:migrate
-bin/console trunk:catalogue:seed          # idempotent; your module joins the catalogue
+bin/console seam:catalogue:seed          # idempotent; your module joins the catalogue
 ```
 
 The `diff` is the host's, not yours — see chokepoint 1 above for why a bundle that owns tables
 requires the migration bundle and ships no versions.
 
-The seed command is namespaced to the bundle that owns it, `uhifadhi/trunk-module`, and keeps
+The seed command is namespaced to the bundle that owns it, `uhifadhi/seam-module`, and keeps
 `app:seed:catalogue` as an alias because that string is written into deploy pipelines.
 
 It is safe to run on production and safe to run twice. Your module's catalogue row is refreshed from
@@ -941,13 +977,13 @@ upserts by slug. Each area's on/off state and ordering is created once and never
 deploy cannot overrule an admin who parked your module, and uninstalling your bundle leaves every
 area's history where it was rather than deleting it.
 
-Then switch the module on for an area from the Customize page — unless you declared `core()`, in
+Then switch the module on for an area from the Customize page — unless you declared `base()`, in
 which case it is already on.
 
 **Zero modules is a working installation**, and it is worth knowing what that looks like, because it
 is the state your module arrives into:
 
 ```console
-$ bin/console trunk:catalogue:seed
+$ bin/console seam:catalogue:seed
  [OK] Catalogue reconciled: 0 module(s) from 0 installed provider(s); 0 area assignment(s) backfilled.
 ```

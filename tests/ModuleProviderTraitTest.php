@@ -48,7 +48,7 @@ final class ModuleProviderTraitTest extends TestCase
         self::assertSame('live', $provider->status());
         self::assertNull($provider->dataSource());
         self::assertFalse($provider->pinned());
-        self::assertFalse($provider->core(), 'A module is installable until it says otherwise — core is the exception.');
+        self::assertFalse($provider->base(), 'A module is installable until it says otherwise — base is the exception.');
         self::assertSame(0, $provider->position());
         self::assertNull($provider->icon());
         self::assertNull($provider->entryRoute(), 'A generically-rendered module has no own entry route.');
@@ -125,10 +125,10 @@ final class ModuleProviderTraitTest extends TestCase
     }
 
     /**
-     * The core tier: platform machinery other surfaces already depend on says so,
-     * and the host seeds it active rather than parked.
+     * The base tier: platform machinery other surfaces already depend on says
+     * so, and the host seeds it active rather than parked.
      */
-    public function testACoreModuleSaysSo(): void
+    public function testABaseModuleSaysSo(): void
     {
         $provider = new class implements ModuleProviderInterface {
             use ModuleProviderTrait;
@@ -148,13 +148,13 @@ final class ModuleProviderTraitTest extends TestCase
                 return 'operations';
             }
 
-            public function core(): bool
+            public function base(): bool
             {
                 return true;
             }
         };
 
-        self::assertTrue($provider->core());
-        self::assertFalse($provider->pinned(), 'Core is about the initial state, pinned is about the ordering — they are separate.');
+        self::assertTrue($provider->base());
+        self::assertFalse($provider->pinned(), 'Base is about the initial state, pinned is about the ordering — they are separate.');
     }
 }
