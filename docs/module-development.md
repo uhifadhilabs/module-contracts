@@ -820,7 +820,7 @@ without a schema. The association is `NOT NULL`, so everything that walks the me
 ```console
 $ bin/console doctrine:schema:create
 In MappingException.php line 72:
-  Class 'UhifadhiLabs\Trunk\Entity\AreaInterface' does not exist
+  Class 'Uhifadhi\Trunk\Entity\AreaInterface' does not exist
 ```
 
 Booting still works, and that part is worth keeping true — a host between `composer require` and its
