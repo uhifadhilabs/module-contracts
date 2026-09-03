@@ -496,7 +496,20 @@ A module **declares** permissions; it never grants them:
 // src/Module/SightingsModuleProvider.php
 public function permissions(): array
 {
-    return [new ModulePermission('sightings.verify', 'Sightings', 'Verify')];
+    return [
+        new ModulePermission(
+            'sightings.record',
+            'Sightings',
+            'Record',
+            'Enter a sighting from the field and attach photographs to it.',
+        ),
+        new ModulePermission(
+            'sightings.verify',
+            'Sightings',
+            'Verify',
+            'Confirm or reject somebody else’s sighting, which is what makes it count in the totals.',
+        ),
+    ];
 }
 ```
 
@@ -505,6 +518,48 @@ and they disappear when the module is uninstalled. A declaration carries no role
 holders — **installing a module must never hand an existing user a new power**. Enforcement stays
 clean in both directions: you check the value at your own routes, the host alone decides who holds
 it.
+
+#### The fourth argument is a sentence, and it is required
+
+`ModulePermission` takes four strings, not three. The first three are a **name** — a value to check
+and two words to print. The fourth is the **answer**: one sentence saying what holding this lets a
+person do, printed under the name everywhere the permission appears.
+
+It has no default, deliberately. An administrator opening the host's matrix is being asked to hand a
+power over, and `Sightings · Verify` does not tell them what they are handing over. An optional
+sentence is one most modules would skip, and a matrix where half the rows explain themselves is a
+matrix people stop reading. So a module that has not thought about the sentence does not compile,
+and a blank one is refused at construction.
+
+Write it about the holder, in the product's voice — "Confirm or reject somebody else's sighting",
+not "Grants verify access". The reader is deciding whether to give it to a colleague.
+
+#### A private enum is a fine way to spell your own values
+
+Nothing shared exists for permission values, and nothing shared is planned: a host-wide enum of
+every module's permissions would be a file every module has to be added to, which is the coupling
+the declaration mechanism exists to avoid. But a bare string repeated between a provider and the
+routes that check it is a typo waiting to happen, so **a module may ship its own private enum** and
+police it itself:
+
+```php
+// src/Enum/SightingsPermission.php — YOURS, not the host's, not the contract's
+enum SightingsPermission: string
+{
+    case Record = 'sightings.record';
+    case Verify = 'sightings.verify';
+}
+
+// the provider spells the value once, from the enum
+new ModulePermission(SightingsPermission::Verify->value, 'Sightings', 'Verify', '…');
+
+// and so does the route that enforces it
+#[IsGranted(SightingsPermission::Verify->value)]
+```
+
+The enum stays inside your bundle and never crosses the seam: the host's catalogue and voter see
+strings, as they do for every module, and yours is the only code that knows the enum exists. Namespace
+the values by your module (`sightings.*`) so two modules cannot collide on one.
 
 ### Rendering: generic page or your own
 

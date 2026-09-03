@@ -77,7 +77,12 @@ final class ModuleProviderTraitTest extends TestCase
 
             public function permissions(): array
             {
-                return [new ModulePermission('example.review', 'Example', 'Review')];
+                return [new ModulePermission(
+                    'example.review',
+                    'Example',
+                    'Review',
+                    'Look at what somebody else recorded and mark it settled.',
+                )];
             }
         };
 
@@ -86,6 +91,44 @@ final class ModuleProviderTraitTest extends TestCase
         self::assertSame('example.review', $permissions[0]->value);
         self::assertSame('Example', $permissions[0]->umbrella);
         self::assertSame('Review', $permissions[0]->action);
+        self::assertSame(
+            'Look at what somebody else recorded and mark it settled.',
+            $permissions[0]->description,
+            'A declared permission carries the sentence the matrix prints under its name.',
+        );
+    }
+
+    /**
+     * THE DESCRIPTION IS REQUIRED, and that is the whole of this release's
+     * change. An administrator ticking a box in the host's matrix is being
+     * asked to grant a power, and "Example · Review" is a label rather than an
+     * answer to what it lets somebody do. A default would have made the
+     * sentence optional, which is the same as making it absent — so the
+     * constructor takes four arguments and a module that has not thought about
+     * the sentence does not compile.
+     */
+    public function testAPermissionCannotBeDeclaredWithoutADescription(): void
+    {
+        $reflection = new \ReflectionClass(ModulePermission::class);
+        $constructor = $reflection->getConstructor();
+
+        self::assertNotNull($constructor);
+        self::assertSame(4, $constructor->getNumberOfParameters());
+        self::assertSame(4, $constructor->getNumberOfRequiredParameters(), 'No argument of a permission declaration is optional.');
+        self::assertSame('description', $constructor->getParameters()[3]->getName());
+    }
+
+    /**
+     * An empty sentence is refused rather than stored. A blank description is
+     * indistinguishable from no description at the point it matters — under
+     * the checkbox — and a module that ships one has answered the compiler
+     * without answering the administrator.
+     */
+    public function testAnEmptyDescriptionIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new ModulePermission('example.review', 'Example', 'Review', '   ');
     }
 
     public function testOverridesWinOverDefaults(): void
