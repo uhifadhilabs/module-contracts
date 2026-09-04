@@ -1,20 +1,28 @@
 # uhifadhi/module-contracts
 
 The contract a [uhifadhi](https://github.com/uhifadhilabs) module declares itself with.
-MIT — public on purpose, so built-in and installed modules implement it
-identically and the host registers both through one seam.
 
-## `ModuleProviderInterface`
+## What it is
 
-Catalogue metadata (`slug`, `name`, `category`, `status`, `dataSource`, `pinned`, `position`,
-`icon`, `core`) plus the one capability beyond the legacy catalogue: **`entryRoute()`** — return `null`
-to render through the host's generic module page (what every built-in does today), or a route
-name to own your pages (the host links with the area's uuid).
+Two interfaces and a trait. `ModuleProviderInterface` is how a bundle announces itself to a host
+as a module — the catalogue metadata and the route it enters on. `Entity\UserInterface` is how a
+module's records point at a person without depending on whoever owns accounts.
 
-One implementation = one module (the per-area capability shown in an area's module grid). By
-convention a bundle provides exactly one module named after itself; whatever lives *inside* a
-module (a sightings module's "surveys", for instance) is the module's own internal concern and never
-appears in this contract.
+MIT — public on purpose, so built-in and installed modules implement it identically and the host
+registers both through one seam.
+
+## Installation
+
+```bash
+composer require uhifadhi/module-contracts
+```
+
+There is nothing to configure and no bundle to register: this package is interfaces, and the
+host you install into already knows what to do with an implementation of them.
+
+## Getting started
+
+Implement `ModuleProviderInterface` once, in the bundle that is your module:
 
 ```php
 // src/Module/SightingsModuleProvider.php (your bundle)
@@ -32,35 +40,11 @@ final class SightingsModuleProvider implements ModuleProviderInterface
 }
 ```
 
-The host autoconfigures every implementation (tag `uhifadhi.module`) and its catalogue seed
-ingests them. A module shipped as a *reusable bundle* is **not** autoconfigured — tag
-`uhifadhi.module` explicitly in your extension.
+Then tag it. The host autoconfigures every implementation with `uhifadhi.module` and its
+catalogue seed ingests them — but a module shipped as a *reusable bundle* is **not**
+autoconfigured, so tag `uhifadhi.module` explicitly in your extension.
 
-### Installable and base
-
-`base()` is the one tier distinction. An **installable** module (`base()` is `false`, the default)
-is seeded into the catalogue *parked*: installed, but switched on per area by an admin. A **base**
-module is seeded *active* in every area, because other surfaces already depend on it — the map
-platform is the first, and a host without it does not have fewer features, it has broken screens.
-
-Base means "on by default", not "cannot be turned off": the host's Customize page still governs an
-area's modules. Same contract, same bundle shape, same seams — the tier is a default, not a
-different kind of thing.
-
-The word is **base**, and it used to be "core". "Core" marks a thing as important without saying
-what it is, and it is the word a codebase reaches for twice — once for the runtime at the centre,
-once for what ships by default. Those get separate words here: the runtime is the **seam**
-(`uhifadhi/seam-module`, what your provider registers with), and the always-present tier of
-ordinary modules is **base**. "Base" also names the real test — a base module is one whose absence
-makes the installation *not uhifadhi*.
-
-## `Entity\UserInterface`
-
-The person a module's record points at. Almost every module keeps records with a name on them —
-who reported the incident, who led the patrol, whose dashboard layout this is — and the accounts
-themselves belong to `uhifadhi/team-module`. A module that type-hinted that bundle's `User` would
-be a module nobody can install without it, so it takes the contract and the installation resolves
-it:
+Where a record needs a person on it, type-hint the contract rather than an account class:
 
 ```php
 // src/Entity/Sighting.php (your bundle)
@@ -70,59 +54,8 @@ use Uhifadhi\ModuleContracts\Entity\UserInterface;
 private ?UserInterface $recordedBy = null;
 ```
 
-```yaml
-# what uhifadhi/team-module prepends for you — no installation writes this
-doctrine:
-    orm:
-        resolve_target_entities:
-            Uhifadhi\ModuleContracts\Entity\UserInterface: Uhifadhi\Team\Entity\User
-```
-
-**Whoever knows the answer states the resolution**: the package that provides
-the entity is the package that names it, so
-[`uhifadhi/team-module`](https://github.com/uhifadhilabs/team-module) prepends
-that line and an installation writes nothing. The seam's `AreaInterface` is
-answered the same way, by
-[`uhifadhi/area-module`](https://github.com/uhifadhilabs/area-module). With both
-installed, a bare installation reaches `doctrine:migrations:diff` with zero
-doctrine edits.
-
-You write a `resolve_target_entities` line only to **disagree** — naming your own
-class, which wins, because prepended configuration loses to the application's. It
-is one map under the `doctrine:` block your file already opens with, so merge
-into it rather than adding a second `doctrine:` key, which is not valid YAML.
-
-Seven questions — `getId`, `getUuidString`, `getEmail`, `getFirstName`, `getLastName`,
-`getFullName`, `getRangerCode` — and no more. It is a measured surface, not the account class with
-the word `interface` after it: passwords, tokens, roles and positions stay with whoever owns
-accounts. It imports nothing, carries no mapping of its own, and is **not**
-`Symfony\Component\Security\Core\User\UserInterface` — that one answers "who is signed in" and
-still comes from the token storage.
-
-## Why one package?
-
-Symfony ships its contracts split per domain — `symfony/cache-contracts`,
-`symfony/event-dispatcher-contracts` — because outsiders consume single domains: Monolog
-wants the log interfaces and nothing else, and making it drag in the cache ones would be rude.
-
-This package does not split, because its consumer species is singular: **modules**. A module
-needs the registration seam simply to exist — that is what makes it a module rather than a
-bundle — so nobody wants the overview-contribution interfaces *without* registration. Split
-packages here would always be installed together, and two packages that never travel apart are
-a boundary drawn in the wrong place. The test is whether either half has an independent life,
-and here neither does.
-
-The day that stops being true, split. If a consumer appears that is not a module — an external
-tool that wants only the data-shape contracts and has no interest in registering with a host —
-then that domain has an audience of its own and has earned its own package. Not before.
-
-## Building a module
-
-See **[docs/what-is-a-contract.md](docs/what-is-a-contract.md)** for what "contract" means here
-and why some of them live in this package while others live with the bundle they describe.
-
-See **[docs/module-development.md](docs/module-development.md)** — the full guide from `composer.json`
-to a Flex recipe, written for someone building a custom module against these contracts.
+`uhifadhi/team-module` prepends the `resolve_target_entities` line that points it at a real
+class, so an installation writes no doctrine configuration of its own.
 
 ## Development
 
@@ -130,3 +63,21 @@ to a Flex recipe, written for someone building a custom module against these con
 composer install
 composer check   # cs + phpstan (max) + phpunit
 ```
+
+## Learn more
+
+- **[What a contract is](docs/what-is-a-contract.md)** — what the word means here, and why some
+  contracts live in this package while others live with the bundle they describe.
+- **[Building a uhifadhi module](docs/module-development.md)** — the full guide from
+  `composer.json` to a Flex recipe, written for someone building a custom module against these
+  contracts.
+- **[`ModuleProviderInterface`](docs/module-provider.md)** — the full metadata surface, and the
+  base-versus-installable tier that decides whether your module arrives switched on.
+- **[`Entity\UserInterface`](docs/user-interface.md)** — the seven questions it asks, and the rule
+  that whoever provides the entity states the resolution.
+- **[Why one package?](docs/why-one-package.md)** — why the registration seam and the data-shape
+  contracts ship together, and the test that would split them.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

@@ -120,12 +120,13 @@ sightings-module/
 ├── .php-cs-fixer.dist.php
 ├── .gitignore
 ├── LICENSE
-├── README.md
+├── README.md               # lean: what it is, install, wiring, a map into docs/
 ├── composer.json
 ├── phpstan.dist.neon
 ├── phpunit.dist.xml
 ├── assets/                 # importmap JavaScript (chapter to come)
 ├── config/services.php     # static wiring
+├── docs/                   # everything the README is too short for
 ├── public/                 # stylesheets, vendor scripts, images
 ├── src/
 │   ├── YourVendorSightingsBundle.php
@@ -175,6 +176,43 @@ composer.json, its own tests, its own release cadence and a hard edge that a dir
 suggest. Grouping by domain again inside it re-answers a question the package already answered.
 
 > Modules are the domain folders; inside them, folders are technical kinds.
+
+### The README is lean; depth lives in `docs/`
+
+Two documents, two audiences. **The README answers "how do I get this running?"** — it is read
+once, by someone who has just typed `composer require` and wants the shortest honest path to a
+working screen. **`docs/` answers "why is it like this, and what else can it do?"** — read later,
+by someone extending the module, debugging its behaviour, or arguing with a decision.
+
+A README that carries both makes the first reader scroll past a boundary essay to find the
+config key they needed, so the split is a rule rather than a preference. Every module in the
+fleet converges on the same README skeleton, in this order:
+
+1. **Title and one-liner** — the package name, and one sentence saying what the module is for.
+2. **What it is** — a few lines. Enough to know whether you want it.
+3. **Installation** — `composer require`, and what the recipe does or does not do for you.
+4. **Getting started** — the wiring steps that are *genuinely required* before the module works.
+   Not the optional ones, not the interesting ones. If an installation can skip it, it is not
+   here.
+5. **Learn more** — a map into `docs/`, one line per document saying what is inside it.
+6. **License**.
+
+Everything else is `docs/`: architecture rationale, boundary rulings, behaviour tables,
+configuration reference beyond the required keys, contract-change policy, design decisions,
+naming arguments, upgrade transcripts, testing guides, and every section that begins with "why".
+Name the files by topic, kebab-case — `docs/boundaries.md`, `docs/configuration.md`,
+`docs/theming.md` — and prefer a few substantial documents over a drift of stubs.
+
+Nothing gets **deleted** in the name of leanness. Depth that no longer fits the README moves into
+a document and keeps its prose; a section that was worth writing is worth keeping, it just stops
+standing between a new installation and its first working page. When you move a section, fix what
+pointed at it — sibling documents, and the docblocks in `src/` and `tests/` that cite a README
+heading by name.
+
+Both the README and `docs/` ship inside the package tarball, so a reader who has only
+`vendor/your-vendor/sightings-module/` on disk still has the whole set. Relative links between
+them resolve on GitHub and in a checkout alike, which is the other reason the depth lives beside
+the README rather than in a wiki.
 
 ### Pointing at a person
 
