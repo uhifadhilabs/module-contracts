@@ -593,6 +593,143 @@ the values by your module (`sightings.*`) so two modules cannot collide on one.
 Returning a route name means you own your pages, and the host links to it with the area's uuid:
 `path(entryRoute(), {uuid: area.uuid})`. Your route therefore has to accept a `uuid` parameter and
 resolve the area itself.
+
+### How your screens become sidebar rows
+
+**Registering with the seam does not put a row in the sidebar, and it is not supposed to.** The
+seam is a catalogue and a per-area ledger; the sidebar is a drawing. Nothing in the platform maps
+one to the other automatically, and a module that assumed otherwise ships screens nobody can find
+— which is the same as not shipping them.
+
+There are **two** ways a module becomes reachable, and which one you want is decided by a single
+question: **is this capability an area's, or the installation's?**
+
+| | A per-area capability | An installation-wide screen |
+| --- | --- | --- |
+| Examples | sightings, patrols, incidents | the team roster, the file library |
+| You implement | `ModuleProviderInterface` | the shell's `NavigationSourceInterface` |
+| Tagged | `uhifadhi.module` | `shell.nav_section` |
+| You appear in | the catalogue, and each area's module grid | the sidebar, as one row |
+| Linked by | `entryRoute()` + the area's uuid | the url you generate |
+| Who draws the nav row | **the host** | **you** |
+
+**For a per-area module you write no navigation code at all.** The host implements a
+`NavigationSourceInterface` of its own and folds four things it alone has — its areas, the viewer,
+the permission voters, and the seam's per-area ledger — into "these rows, in this order". Your
+module reaching an area's sidebar is a consequence of being switched on for that area, and that is
+the host's reading to make. Registering with the seam is the whole of your side.
+
+**An installation-wide screen is the other case**, and the shell's own contract names it: "the rare
+platform-wide row that belongs to nobody's area". Do **not** reach for `ModuleProviderInterface`
+here. That contract is per-area by construction — the seam's ledger is an area-by-module table — so
+an org-wide capability registered through it becomes something an admin has to switch on in each
+area separately, and a roster that exists four times is not a roster. Implement the shell's
+interface instead:
+
+```php
+// src/Shell/SightingsNavigation.php  (org-wide screens only)
+use Uhifadhi\Shell\Contract\NavigationSourceInterface;
+use Uhifadhi\Shell\Model\NavItem;
+use Uhifadhi\Shell\Model\NavSection;
+
+final readonly class SightingsNavigation implements NavigationSourceInterface
+{
+    public function __construct(
+        private UrlGeneratorInterface $urls,
+        private TokenStorageInterface $tokens,
+        private AuthorizationCheckerInterface $authorization,
+        private RequestStack $requests,
+    ) {}
+
+    public function sections(): iterable
+    {
+        // NO TOKEN, NO QUESTION. A shell renders where a firewall does not
+        // reach, and asking the checker with no token THROWS rather than
+        // answering false.
+        if (null === $this->tokens->getToken()) {
+            return;
+        }
+
+        // GATING IS YOURS. The shell holds no authorization service.
+        if (!$this->authorization->isGranted('sightings.view')) {
+            return;
+        }
+
+        // ROUTE-TOLERANT: the addresses are mounted by the APPLICATION, in a
+        // file it owns and may delete. No route, no row.
+        try {
+            $url = $this->urls->generate('sightings_index');
+        } catch (RouteNotFoundException) {
+            return;
+        }
+
+        yield new NavSection('Observatory', [
+            new NavItem(
+                label: 'Sightings',
+                url: $url,
+                icon: 'lucide:binoculars',
+                current: $this->viewerIsHere($url),
+            ),
+        ], position: 10);
+    }
+}
+```
+
+And in your `config/services.php`:
+
+```php
+// REGISTERED ONLY WHERE THERE IS A SHELL. uhifadhi/shell-module is a
+// suggestion of your bundle, not a requirement, and a service whose class
+// implements an absent interface is a container that will not compile. The
+// ::class constant does not autoload, so the guard costs nothing.
+if (interface_exists(NavigationSourceInterface::class)) {
+    $services->set('sightings.navigation', SightingsNavigation::class)
+        ->args([
+            service('router'),
+            service('security.token_storage'),
+            service('security.authorization_checker'),
+            service('request_stack'),
+        ])
+        // Written out rather than read off UhifadhiShellBundle::NAV_TAG, which
+        // would load the shell's bundle class — exactly as the seam's
+        // `uhifadhi.module` tag is written out for the same reason.
+        ->tag('shell.nav_section');
+}
+```
+
+**The tag goes on by hand.** A reusable bundle's services are not autoconfigured, and an untagged
+nav source is one the shell never asks — which looks precisely like a module that contributes
+nothing.
+
+Five rules the shell enforces or expects, and each exists because of a specific way a sidebar goes
+wrong:
+
+- **Gating is yours, and a withheld row is ABSENT, never hidden.** The shell holds no
+  authorization service and calls `is_granted` on nothing. There is no "hidden" flag, because a
+  hidden row leaks its existence to whoever reads the HTML. Gate on the same permission the screens
+  behind the row are gated on, or the sidebar offers a door that closes in somebody's face.
+- **Build the answer in the method, never in the constructor.** Sources are iterated on every
+  render and nothing between them and the sidebar caches. That is what makes revoking a permission
+  or switching a module off take its row away the same day rather than the next deploy.
+- **Never throw.** Your exception is not your page failing — it is the sidebar failing, on every
+  page of the installation, including ones that have nothing to do with your module. The two live
+  ways to throw are the two guarded above: no security token, and a route the application
+  unmounted.
+- **Exactly one row is current among siblings, or the shell refuses.** Zero is allowed and always
+  will be. A lit row inside a lit branch is one path drawn, not a contradiction.
+- **A row with no destination renders inert, not absent.** `url: null` gives a visible, dimmed,
+  unclickable row carrying its reason in `hint` — for a surface whose route has not merged yet. It
+  is the opposite rule from gating, and both are deliberate: "planned" is worth saying, "not yours"
+  is not.
+
+**Where this interface lives, and when it moves.** `NavigationSourceInterface` is published by
+`uhifadhi/shell-module`, not by this package, because for a long time only the host implemented it
+— a promise between the shell and the application mounting it. Modules implement it now, which by
+this repository's own rule (see `what-is-a-contract.md`) makes it something modules and the
+platform exchange, and therefore a candidate to be **hoisted here**. It has not been hoisted yet.
+Until it is, keeping the dependency soft — the `interface_exists` guard and a `suggest` rather than
+a `require` — is what stops the shell becoming a hard dependency of every module with a screen.
+
 ---
 
 ## 4. Shipping importmap assets from a bundle
