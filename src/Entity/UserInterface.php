@@ -13,14 +13,18 @@ namespace Uhifadhi\ModuleContracts\Entity;
  * itself belongs to `uhifadhi/team-module`, and a module that type-hinted that
  * bundle's `User` would be a module you cannot install without it — and a
  * module that could never be pointed at an installation's own account class.
- * So the module maps its association to this interface and the installation
- * resolves it:
+ * So the module maps its association to this interface, and WHOEVER KNOWS THE
+ * ANSWER STATES THE RESOLUTION — here uhifadhi/team-module, because it is the
+ * package that provides the entity. It prepends this and an installation writes
+ * nothing:
  *
- *     # config/packages/doctrine.yaml
  *     doctrine:
  *         orm:
  *             resolve_target_entities:
  *                 Uhifadhi\ModuleContracts\Entity\UserInterface: Uhifadhi\Team\Entity\User
+ *
+ * An installation writes that line only to DISAGREE, naming its own class, which
+ * wins because prepended configuration loses to the application's.
  *
  * IT LIVES IN Entity/ because that is what it is: the stand-in Doctrine maps an
  * association to, resolved to a real entity at compile time. It carries no
@@ -29,9 +33,10 @@ namespace Uhifadhi\ModuleContracts\Entity;
  * package of promises that dragged in an ORM would cost something to depend on.
  *
  * IT LIVES IN THIS PACKAGE, AND THE AREA CONTRACT DOES NOT. `AreaInterface` is
- * the seam's own promise to the application hosting it: the seam owns the
- * record of which modules an area switched on, so it alone needs an area, and
- * only the installation ever answers. This one is exchanged between MANY
+ * the seam's own promise: the seam owns the record of which modules an area
+ * switched on, so it alone needs an area, and one package answers it
+ * (uhifadhi/area-module) by the same rule that has team answer this one. That
+ * promise runs between two named parties. This one is exchanged between MANY
  * modules and the platform — patrol, incidents and widget preferences all point
  * at a person, and a third-party module written by somebody else will too. That
  * is the rule of thumb in docs/what-is-a-contract.md applied literally: a

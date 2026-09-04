@@ -115,12 +115,13 @@ which lived in the host until modules needed it.
 The two contracts about *things a module points at* land on opposite sides of that line, which
 makes them the clearest illustration of it. `Uhifadhi\Seam\Entity\AreaInterface` stays in the
 seam: the seam alone owns the record of which modules an area switched on, so the seam alone needs
-an area, and the promise runs between one bundle and the application hosting it.
+an area, and the promise runs between that one bundle and whoever supplies the area — today
+`uhifadhi/area-module`, tomorrow an installation that brought its own.
 `Uhifadhi\ModuleContracts\Entity\UserInterface` is here, because pointing at a person is what
 modules do — patrol records, incident reports and saved dashboard layouts all do it, and so will a
-module written by somebody who has never read this repository. Same mechanism on the Doctrine side
-(`resolve_target_entities`, an installation naming its own class); different answer to "who
-exchanges this promise", and that is the only question the rule asks.
+module written by somebody who has never read this repository. Same mechanism on the Doctrine side — `resolve_target_entities`, stated by whoever knows the
+answer — and the same escape hatch, an installation naming its own class and winning. Different
+answer to "who exchanges this promise", and that is the only question the rule asks.
 
 The picture that holds it together: **module-contracts is the shape of the plugs. The shell is
 the wall they plug into. The seam is the fuse box that knows what is switched on. And the tests

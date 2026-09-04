@@ -205,26 +205,52 @@ class Sighting
 The interface holds no mapping of its own — the attributes are on your side, where the association
 is — and it imports nothing, so taking it costs your module nothing to install.
 
-**Then the installation resolves it**, exactly as it resolves the seam's area:
+#### Whoever knows the answer states the resolution
+
+Then something has to say what the interface **means**, and this is the fleet's rule for who:
+
+> **Whoever knows the answer states the resolution.** The package that provides the entity is the
+> package that prepends the `resolve_target_entities` line. An installation writes one only when it
+> wants to **disagree**, and its line wins, because prepended configuration loses to the
+> application's by Symfony's own design.
+
+There are two live instances of it, and they are the two contracts every module meets:
+
+| Contract | Who answers it | What the installation writes |
+|---|---|---|
+| `Uhifadhi\ModuleContracts\Entity\UserInterface` | `uhifadhi/team-module` — it knows its `User` | nothing |
+| `Uhifadhi\Seam\Entity\AreaInterface` | `uhifadhi/area-module` — it knows its `AreaOfInterest` | nothing |
 
 ```yaml
-# config/packages/doctrine.yaml (the installation)
+# what those two modules prepend for you — no installation writes this
 doctrine:
     orm:
         resolve_target_entities:
             Uhifadhi\ModuleContracts\Entity\UserInterface: Uhifadhi\Team\Entity\User
+            Uhifadhi\Seam\Entity\AreaInterface: Uhifadhi\Area\Entity\AreaOfInterest
 ```
 
-Three things follow, and all three are the area contract's lessons repeated.
-**Merge, do not append**: that file already opens with `doctrine:`, and a second
-`doctrine:` key in one file is not valid YAML — the line goes under the existing
-`orm:`, and `resolve_target_entities` is one map that every contract of this
-kind shares. **Say so in your README and
-your recipe**, because a recipe cannot write that line for you: it has no way to know which class
-an installation calls its people. And **expect the schema, not the boot, to be what stops** without
-it — the container compiles and the kernel boots on an unresolved interface, but anything that
-walks the metadata (`doctrine:schema:create`, `doctrine:migrations:diff`) stops with
-`Class 'Uhifadhi\ModuleContracts\Entity\UserInterface' does not exist`.
+**The corollary is the test of whether the rule is being followed: once the answer-modules are
+installed, a bare installation reaches `doctrine:migrations:diff` with zero doctrine edits.** Both
+of these used to be documented hand-steps, and both were the wrong shape — a hand-step is for a
+decision only the installation can make, and neither of these was one. Their cost was real, because
+forgetting one fails a long way from its cause: the container compiles, the kernel boots, and only
+the metadata walk stops.
+
+So if YOUR module publishes a contract of this kind, ask which package will know the answer. If it
+is a module you also ship, that module prepends it (`prependExtension()`, and mind the
+`prepend: true` flag — `extension()` appends by default even from inside `prependExtension()`, which
+would overrule the installation instead of yielding to it). If the answer is genuinely the
+installation's alone, then **say so in your README and your recipe**, ship the block as a comment,
+and **expect the schema, not the boot, to be what stops** without it — the container compiles and
+the kernel boots on an unresolved interface, but anything that walks the metadata
+(`doctrine:schema:create`, `doctrine:migrations:diff`) stops with
+`Class '…Interface' does not exist`.
+
+**Disagreeing is one block, merged not appended**: `config/packages/doctrine.yaml` already opens
+with `doctrine:`, and a second `doctrine:` key in one file is not valid YAML — the line goes under
+the existing `orm:`, and `resolve_target_entities` is one map that every contract of this kind
+shares, so an installation that overrides both writes them together.
 
 **A relation is not always the right answer.** Where the record is a UI scrap rather than a
 document — a saved layout, a dismissed hint — hold the person's `getUuidString()` in a plain
@@ -850,9 +876,9 @@ consumer binds to instead.
 
 `AreaInterface` is the model of the finished move. The seam needs the host's area and does not have
 one, so it publishes `Uhifadhi\Seam\Entity\AreaInterface` — `getId()` and nothing else — maps its
-own association to that, and lets the host resolve it with
-`doctrine.orm.resolve_target_entities`. What used to be an impersonation of a host class is now a
-contract the host satisfies; the stub that remains
+own association to that, and leaves `doctrine.orm.resolve_target_entities` to whoever knows the
+answer — today `uhifadhi/area-module`. What used to be an impersonation of a host class is now a
+contract another package satisfies; the stub that remains
 (`tests/Integration/Fixtures/Uhifadhi/Entity/AreaOfInterest.php`) exists only to play the *host* end
 of that resolution, which is the honest job of a stub.
 
@@ -961,14 +987,17 @@ that fabricates records.
 into an existing `importmap.php`. If you ship importmap assets, the three entries from chapter 4 are
 the one manual step, and your README has to say so.
 
-Nor can it write a line that depends on names only the host knows. If your bundle maps an
-association to an interface for the host to resolve (chapter 3), the recipe cannot fill in the host's
-class — so ship the `doctrine.orm.resolve_target_entities` block **as a comment** in your
-`config/packages/<alias>.yaml`, next to the reason, and make sure the bundle boots without it.
+Nor can it write a line that depends on names only an installation knows. If your bundle maps an
+association to an interface (chapter 3), the recipe cannot fill in the target class — so first ask
+the ownership question: **whoever knows the answer states the resolution.** If a module you ship
+knows it, that module prepends it and the recipe says so in one sentence, with nothing to uncomment.
+Only where the answer is genuinely the installation's does the recipe ship the
+`doctrine.orm.resolve_target_entities` block **as a comment**, next to the reason — and either way
+the bundle has to boot without it.
 
-Then say honestly how far the host gets before it writes that line, and **test the answer** rather
-than assuming it. "Boots without it" and "works without it" are different claims, and the seam's
-recipe asserted the second for months while only the first was true — see
+Then say honestly how far an installation gets before the interface is answered, and **test the
+answer** rather than assuming it. "Boots without it" and "works without it" are different claims,
+and the seam's recipe asserted the second for months while only the first was true — see
 [the chokepoints](#three-chokepoints-between-composer-require-and-a-schema) below.
 
 ### The host's half of a recipe-owned file
@@ -1040,16 +1069,24 @@ In MappingException.php line 72:
 Booting still works, and that part is worth keeping true — a host between `composer require` and its
 first entity must not be in a broken state. But "boots" was being sold as "installs".
 
-The choice was between making the claim true and making the documentation true. A bundle can make it
-true by shipping a minimal concrete target its recipe wires by default, and that was **rejected**:
-it would have the seam define an area model, which is the one thing its charter says belongs to the
-host, and it would put a stray table in every installation that never noticed — payable later as a
-real migration on the day the host maps its own. So the documentation moved instead. The recipe now
-says *required*, quotes the error verbatim so the answer is in the file the error is about, and
-ships the whole step — the entity to write as well as the block to uncomment.
+The choice was between making the claim true and making the documentation true. Making the *seam*
+ship a minimal concrete target was **rejected**: it would have the seam define an area model, which
+is the one thing its charter says belongs elsewhere, and it would put a stray table in every
+installation that never noticed — payable later as a real migration on the day that installation
+maps its own. So the documentation moved first: the recipe said *required*, quoted the error
+verbatim so the answer was in the file the error is about, and shipped the whole step.
 
-Generalise it as: **if your bundle cannot be schema'd until the host does something, that something
-is part of installing your bundle.** Put it in the recipe comment, the README and a test.
+Then the step was **deleted**, which is the better ending and the one to copy. The answer did not
+have to come from the seam and it did not have to come from the installation: it came from a
+separate module — `uhifadhi/area-module` — that provides a real area and prepends the resolution
+itself, exactly as `uhifadhi/team-module` does for the user contract. The seam still defines
+nothing, no stray table appears anywhere, and an installation writes no doctrine line at all. See
+[whoever knows the answer states the resolution](#whoever-knows-the-answer-states-the-resolution).
+
+Generalise it as two rules. **If your bundle cannot be schema'd until something else happens, that
+something is part of installing your bundle** — put it in the recipe comment, the README and a test.
+And **before you write a hand-step, ask whether a package could know the answer instead**; if one
+can, the hand-step is a design that has not finished.
 
 **3. An application that squats a vendor namespace, and the mapping prefix that pays for it.**
 doctrine-bundle's Flex recipe writes its `mappings` block for the `symfony/skeleton`, whose PSR-4
