@@ -545,12 +545,64 @@ The word then means two different things at two levels, and they are worth keepi
   configuration need, it is evidence the module was misclassified.
 - **Area level.** Whether a base module can be hidden for a *particular* area is a separate and
   much smaller question. `base()` seeds it active rather than parked, and beyond that the seam
-  does not currently enforce anything — the Customize page will still switch it off, and doing so
-  unloads nothing and takes no assets away. Whether it *should* be allowed to is an open host
-  ruling, not a settled rule this guide can hand you.
+  enforces exactly one thing — a parked module's routes are closed there (next section). It
+  unloads nothing and takes no assets away. Whether a base module *should* be parkable at all is
+  an open host ruling, not a settled rule this guide can hand you.
 
 So `base()` is a default about seeding, and the not-uhifadhi test is the question you answer
 before setting it.
+
+### Parking closes your routes (seam 0.2+)
+
+**Where an area has parked your module, every page you ship answers 404 there.** You write no
+check for it and you cannot forget it: the seam owns the per-area ledger, so the seam enforces it,
+in one `kernel.request` listener that runs after the router and before any controller.
+
+It is **404, not 403**, and the difference is the product's, not the framework's. A 403 confirms
+the page exists and is being kept from the caller — true about a permission, false about parking.
+A parked module is not withheld; the area is not running it, which is what the area's own screens
+already say with the module sitting in the shop rather than the sub-nav.
+
+**Say which module a route belongs to.** One class-level default per controller:
+
+```php
+#[Route(defaults: ['_uhifadhi_module' => 'sightings'])]
+final class SightingsController
+{
+    #[Route('/areas/{uuid}/modules/sightings', name: 'sightings_dashboard', /* … */)]
+    public function dashboard(/* … */): Response { /* … */ }
+}
+```
+
+The string is published as `UhifadhiSeamBundle::MODULE_ROUTE_DEFAULT`. **Import it only if the
+seam is a hard requirement of your bundle** — in a route attribute a class constant is a load-time
+dependency, and most modules keep the seam in `require-dev` plus `suggest`. Spelling it out is
+correct there; put it in one constant of your own and assert the two agree in a test where the
+seam is installed.
+
+If your route carries the area's uuid in a parameter not called `uuid`, name it:
+
+```php
+#[Route(defaults: ['_uhifadhi_module' => 'sightings', '_uhifadhi_module_area' => 'place'])]
+```
+
+**Without the marker** you are not exempt — you are guessed at. A route on the fleet's
+`/areas/{uuid}/modules/{slug}/…` shape is recognised when the segment names a module in the
+catalogue, which covers a module whose URL segment happens to equal its slug and covers nothing
+else. Accident is not a contract: write the line.
+
+**What this does to your test fixtures.** An area written straight into the database has no row in
+the per-area ledger, so it is running nothing, so every page you render in a functional test
+answers 404 — correctly, and uselessly. Do what an installation does, once per fixture area:
+
+```php
+new CommandTester(new Application($kernel)->find('seam:catalogue:seed'))->execute([]);
+$areaModules->install($area, YourModuleProvider::SLUG);   // Uhifadhi\Seam\Service\AreaModuleService
+```
+
+Give it to the "other area" fixtures too — the ones a cross-area test uses to prove your entity
+cannot be read from next door. Those tests assert 404, and the 404 has to keep meaning *that row
+is not in this area* rather than *this area has no such module*.
 
 ### Permissions
 
