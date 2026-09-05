@@ -35,16 +35,27 @@ The host autoconfigures every implementation (tag `uhifadhi.module`) and its cat
 ingests them. A module shipped as a *reusable bundle* is **not** autoconfigured — tag
 `uhifadhi.module` explicitly in your extension.
 
-## Installable and base
+## First, the tier: capability or infrastructure
 
-`base()` is the one tier distinction. An **installable** module (`base()` is `false`, the default)
-is seeded into the catalogue *parked*: installed, but switched on per area by an admin. A **base**
-module is seeded *active* in every area, because other surfaces already depend on it — the map
-platform is the first, and a host without it does not have fewer features, it has broken screens.
+A provider is how a **capability** module (patrol, incident) joins the platform — a capability an
+area may not want, so an admin governs it per area from a catalogue tile. **Infrastructure** modules
+(area, map, widget, storage, team) are the other tier: machinery every relevant screen already
+relies on, installed-means-on everywhere, never a per-area choice. Infrastructure contributes **no**
+provider — nothing to catalogue, nothing to ledger — and is guaranteed present by the composer graph
+instead. So if you are reading this to write a provider, you are (almost certainly) writing a
+capability module. The full test is in
+[module-development.md](module-development.md#two-tiers-infrastructure-and-capability).
 
-Base means "on by default", not "cannot be turned off": the host's Customize page still governs an
-area's modules. Same contract, same bundle shape, same seams — the tier is a default, not a
-different kind of thing.
+## Installable and base (capability modules)
+
+Within the capability tier, `base()` decides the initial per-area state. An **installable** module
+(`base()` is `false`, the default) is seeded into the catalogue *parked*: installed, but switched on
+per area by an admin. A **ships-on** module (`base()` is `true`) is seeded *active* in every area.
+
+`base()` means "on by default", not "cannot be turned off": the host's Customize page still governs
+an area's modules, and this is a distinction *among capability modules only* — it is not how
+infrastructure is expressed (infrastructure has no provider to call it on). Map was seeded active
+with `base()` until it was reclassified as infrastructure and its provider removed.
 
 ## Why "base" and not "core"
 

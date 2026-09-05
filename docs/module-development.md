@@ -511,46 +511,59 @@ host's own enums, and anything unrecognised falls back to a safe default. A typo
 cannot break the seed for everyone else — but it also will not be reported to you, so check the
 tile.
 
-### Base vs installable
+### Two tiers: infrastructure and capability
 
-`base()` decides only the **initial per-area state**:
+The first question about a new module is which **tier** it is, because the tiers are registered
+differently.
+
+| | Registers a provider? | In the catalogue / grid / ledger? | Per-area toggle? | For |
+|---|---|---|---|---|
+| **Capability** (patrol, incident) | yes — tags `uhifadhi.module` | yes | yes — an admin switches it on | a capability an area may not want |
+| **Infrastructure** (area, map, widget, storage, team) | **no** | **no** | **no** — installed means on, everywhere | machinery a screen already relies on |
+
+**The not-uhifadhi test decides the tier.** If a deployment without your module is still
+recognisably the product — poorer, but the product — it is a **capability** module: it takes a
+catalogue tile, an admin governs it per area, and it belongs in the grid. If its absence makes the
+installation *not uhifadhi* — not "fewer features" but *broken screens* — it is **infrastructure**:
+the map platform qualifies because patrol plates, incident plates, the area overview and the zones
+editor all draw with its assets. Almost everything is a capability module. (The seam runtime and
+the shell are the platform itself, a tier above modules and not subject to this question at all.)
+
+**Infrastructure is guaranteed by the composer graph, not by a ledger.** An infrastructure module
+contributes **no** `uhifadhi.module` provider, so the seam never learns it exists: it appears in no
+catalogue, no per-area grid and no `area_module` row. It is present because the project template — or
+a module that needs it — *requires* it (area-module hard-requires map, for one). There is no
+per-area state to seed and nothing to toggle, which is the honest shape for something whose absence
+breaks screens: "on by default in a ledger" would imply an off that must never happen.
+
+- **Deployment level.** Infrastructure modules are in the requires graph, so they are present in
+  every installation by definition. Nobody edits them out; wanting to remove one is not a
+  configuration need, it is evidence the module was misclassified as infrastructure.
+- **Area level.** There is none. Infrastructure is not per-area, so there is no Customize toggle,
+  no parked state and no route to gate for it.
+
+#### `base()` — for capability modules only
+
+`base()` is a nuance *within the capability tier*: it decides a capability module's **initial
+per-area state**.
 
 | | `base()` | Seeded per area as | For |
 |---|---|---|---|
 | Installable (default) | `false` | parked — an admin switches it on | a capability an area may not want |
-| Base | `true` | active | platform machinery other surfaces already depend on |
+| Ships on | `true` | active | a capability worth defaulting on, but still per-area |
 
-Say `true` only when a host without you would not have *fewer features* but *broken screens* — the
-map platform is the first module in the platform to qualify, because patrol plates, incident
-plates, the area overview and the zones editor all import its assets.
+Reach for `base()` only when your module *is* a capability (it has a provider, a tile and a
+per-area life) and you want it seeded active rather than parked. It is **not** how infrastructure is
+expressed — infrastructure has no provider to call `base()` on. The contract method was `core()`
+until this was settled; "core" was dropped because it named importance rather than the seeding
+default it actually controls, and because the runtime already had a name (the **seam**).
 
-**The not-uhifadhi test.** A base module is one whose absence makes the installation *not
-uhifadhi*. If a deployment without your module is still recognisably the product — poorer, but
-the product — then it is installable, not base. Almost everything is installable. The current base
-set is `map`, `team`, `widget` and `area` (the seam runtime and the shell are the platform itself,
-a tier above modules and not subject to this question at all).
-
-**Why "base" and not "core".** "Core" marks something as important without saying what it *is*, and
-it is the word a codebase reaches for twice — once for the runtime at the centre, once for what
-ships by default. This platform has both, so they get separate words: the runtime is the **seam**
-(`uhifadhi/seam-module`, the package your provider registers with), and the always-present tier of
-ordinary modules is **base**. "Base" also names the test above, which "core" never did — the floor
-the product stands on, rather than a ranking of importance. The contract method was `core()` until
-this was settled.
-
-The word then means two different things at two levels, and they are worth keeping apart:
-
-- **Deployment level.** Base modules are in the project template's requires, so they are present
-  in every installation by definition. Nobody edits them out; wanting to remove one is not a
-  configuration need, it is evidence the module was misclassified.
-- **Area level.** Whether a base module can be hidden for a *particular* area is a separate and
-  much smaller question. `base()` seeds it active rather than parked, and beyond that the seam
-  enforces exactly one thing — a parked module's routes are closed there (next section). It
-  unloads nothing and takes no assets away. Whether a base module *should* be parkable at all is
-  an open host ruling, not a settled rule this guide can hand you.
-
-So `base()` is a default about seeding, and the not-uhifadhi test is the question you answer
-before setting it.
+> **Reclassification in progress.** Map was the first module moved from `base()` to infrastructure:
+> its provider is removed, so it left the catalogue, the grid and the ledger while keeping every
+> piece of its rendering machinery. `area` was always infrastructure (it is the axis the catalogue
+> is indexed by, never an entry in it). `team`, `widget` and `storage` are infrastructure by this
+> test and are being moved the same way; until each has its provider removed it may still register
+> one. See each module's README for its current state.
 
 ### Parking closes your routes (seam 0.2+)
 

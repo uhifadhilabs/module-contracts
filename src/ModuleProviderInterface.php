@@ -48,35 +48,32 @@ interface ModuleProviderInterface
     public function pinned(): bool;
 
     /**
-     * BASE, i.e. platform machinery rather than a capability an area opts into.
+     * BASE, i.e. a capability module that ships switched ON rather than parked.
      *
-     * An installable module is INSTALLED but not switched on: the host seeds it
-     * into the catalogue parked, and an admin enables it per area. That is right
-     * for a capability an area may not want, and wrong for a module other
-     * surfaces already depend on — a map platform, say, whose absence does not
-     * mean "fewer features" but "four broken screens". A base module is seeded
-     * ACTIVE in every area instead.
+     * This is a distinction WITHIN THE CAPABILITY TIER — the tier of modules that
+     * carry a provider, take a catalogue tile and live per-area. An installable
+     * module (the default) is INSTALLED but not switched on: the host seeds it
+     * parked, and an admin enables it per area. A base module is seeded ACTIVE in
+     * every area instead. The word means "on by default", not "cannot be turned
+     * off": the host's Customize page still governs an area's modules.
      *
-     * The word means "on by default", not "cannot be turned off": the host's
-     * Customize page still governs an area's modules, and installing or removing
-     * the bundle still governs whether the module exists at all. Nothing about
-     * being base makes a module a different KIND of thing — same contract, same
-     * bundle shape, same seams. It is a default, and only a default.
+     * base() is NOT how platform infrastructure is expressed. Machinery every
+     * relevant screen already relies on — the map platform, whose absence means
+     * "broken screens" rather than "fewer features" — is INFRASTRUCTURE: it
+     * contributes no provider at all, so there is nothing to catalogue, nothing to
+     * ledger, and nothing to call base() on. It is guaranteed present by the
+     * composer graph, not seeded into a per-area row. Map used to answer base()
+     * true; it was reclassified as infrastructure and its provider removed.
      *
      * THE WORD IS "BASE", and it used to be "core". "Core" says a thing is
      * important without saying what it IS, and it is the word every codebase
      * reaches for twice — once for the runtime at the centre and once for the
      * things that ship by default. This platform has both, so it gives them
      * separate words: the runtime is the SEAM (uhifadhi/seam-module, the thing
-     * this provider registers with), and the always-present tier of ordinary
-     * modules is BASE.
-     *
-     * "Base" also names the actual test, which "core" never did: a base module
-     * is one whose ABSENCE MAKES THE INSTALLATION NOT-UHIFADHI. It is the floor
-     * the product stands on, not a ranking of importance.
+     * this provider registers with), and a capability seeded on is BASE.
      *
      * Almost every module answers false (the trait's default). Say true only when
-     * a host would be broken without you.
+     * your module is a capability that should default on in every area.
      */
     public function base(): bool;
 
